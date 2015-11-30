@@ -229,7 +229,7 @@ in the following manner:
 
 ```js
 var test = require('tape').test
-var myperst = require('.')
+var myperst = require('./')
 var abs = require('aedes-persistence/abstract')
 
 abs({
