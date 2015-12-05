@@ -109,13 +109,7 @@ function abstractPersistence (opts) {
       instance.subscriptionsByClient(client, function (err, resubs, reReClient) {
         t.equal(reReClient, client, 'client must be the same')
         t.notOk(err, 'no error')
-        t.deepEqual(resubs, [{
-          topic: 'hello',
-          qos: 1
-        }, {
-          topic: 'matteo',
-          qos: 1
-        }])
+        t.deepEqual(resubs, subs)
         instance.destroy(t.end.bind(t))
       })
     })
@@ -178,6 +172,38 @@ function abstractPersistence (opts) {
           qos: 1
         }])
         instance.destroy(t.end.bind(t))
+      })
+    })
+  })
+
+  test('QoS 0 subscriptions, restored but not matched', function (t) {
+    var instance = persistence()
+    var client = { id: 'abcde' }
+    var subs = [{
+      topic: 'hello',
+      qos: 0
+    }, {
+      topic: 'hello/#',
+      qos: 1
+    }, {
+      topic: 'matteo',
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client, subs, function (err) {
+      t.notOk(err, 'no error')
+      instance.subscriptionsByClient(client, function (err, resubs) {
+        t.notOk(err, 'no error')
+        t.deepEqual(resubs, subs)
+        instance.subscriptionsByTopic('hello', function (err, resubs2) {
+          t.notOk(err, 'no error')
+          t.deepEqual(resubs2, [{
+            clientId: client.id,
+            topic: 'hello/#',
+            qos: 1
+          }])
+          instance.destroy(t.end.bind(t))
+        })
       })
     })
   })

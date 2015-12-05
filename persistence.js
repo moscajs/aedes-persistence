@@ -77,9 +77,10 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
       qos: sub.qos
     }
   }).forEach(function eachSub (sub) {
+    stored.push(sub)
+
     if (sub.qos > 0) {
       that._subscriptionsCount++
-      stored.push(sub)
       trie.add(sub.topic, sub)
     }
   })

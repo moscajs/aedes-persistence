@@ -82,8 +82,6 @@ This is called when a client issue a SUBSCRIBE packet.
 }]
 ```
 
-Any subscriptions with `qos: 0` will be ignored.
-
 -------------------------------------------------------
 <a name="removeSubscriptions"></a>
 ### instance.removeSubscriptions(client, subscriptions, callback(err, client))
