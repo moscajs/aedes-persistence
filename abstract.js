@@ -265,7 +265,7 @@ function abstractPersistence (opts) {
 
           instance.countOffline(function (err, subsCount, clientsCount) {
             t.error(err, 'no error')
-            t.equal(subsCount, 1, 'two subscriptions added')
+            t.equal(subsCount, 1, 'one subscriptions added')
             t.equal(clientsCount, 1, 'one client added')
 
             instance.destroy(t.end.bind(t))
@@ -589,7 +589,7 @@ function abstractPersistence (opts) {
             t.error(err, 'no error')
             t.notOk(packet, 'no will after del')
             t.equal(c, client, 'client matches')
-            t.end()
+            instance.destroy(t.end.bind(t))
           })
         })
       })
@@ -625,7 +625,7 @@ function abstractPersistence (opts) {
           qos: 0,
           retain: true
         }, 'packet matches')
-        t.end()
+        instance.destroy(t.end.bind(t))
       }))
     })
   })
@@ -668,7 +668,8 @@ function abstractPersistence (opts) {
         t.equal(c, anotherClient, 'client matches')
         instance.streamWill({
           'anotherBroker': Date.now()
-        }).pipe(through.obj(function (chunk, enc, cb) {
+        })
+        .pipe(through.obj(function (chunk, enc, cb) {
           t.deepEqual(chunk, {
             clientId: client.id,
             brokerId: broker.id,
@@ -677,7 +678,8 @@ function abstractPersistence (opts) {
             qos: 0,
             retain: true
           }, 'packet matches')
-          t.end()
+          cb()
+          instance.destroy(t.end.bind(t))
         }))
       })
     })
