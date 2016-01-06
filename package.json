@@ -1,6 +1,6 @@
 {
   "name": "aedes-persistence",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
   "scripts": {

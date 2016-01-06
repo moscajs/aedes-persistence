@@ -236,6 +236,25 @@ abs({
 })
 ```
 
+If you require some async stuff before returning, a callback is also
+supported:
+
+```js
+var test = require('tape').test
+var myperst = require('./')
+var abs = require('aedes-persistence/abstract')
+var clean = require('./clean') // invented module
+
+abs({
+  test: test,
+  persistence: function build (cb) {
+    clean(function (err) {
+      cb(err, myperst())
+    })
+  }
+})
+```
+
 ## License
 
 MIT
