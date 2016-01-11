@@ -94,7 +94,7 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
   var trie = this._trie
 
   if (!stored) {
-    stored = {}
+    stored = []
     this._subscriptions[client.id] = stored
   }
 
