@@ -22,7 +22,8 @@ function abstractPersistence (opts) {
       id: 'broker-42',
       mq: mq,
       publish: mq.emit.bind(mq),
-      subscribe: mq.on.bind(mq)
+      subscribe: mq.on.bind(mq),
+      unsubscribe: mq.removeListener.bind(mq)
     }
 
     _persistence(function (err, instance) {
