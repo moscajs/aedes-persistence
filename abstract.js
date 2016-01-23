@@ -3,15 +3,34 @@
 var concat = require('concat-stream')
 var through = require('through2')
 var Packet = require('aedes-packet')
+var mqemitter = require('mqemitter')
 
 function abstractPersistence (opts) {
   var test = opts.test
-  var persistence = opts.persistence
+  var _persistence = opts.persistence
+  var buildEmitter = opts.buildEmitter || mqemitter
 
-  if (persistence.length === 0) {
-    persistence = function asyncify (cb) {
+  if (_persistence.length === 0) {
+    _persistence = function asyncify (cb) {
       cb(null, opts.persistence())
     }
+  }
+
+  function persistence (cb) {
+    var mq = buildEmitter()
+    var broker = {
+      id: 'broker-42',
+      mq: mq,
+      publish: mq.emit.bind(mq),
+      subscribe: mq.on.bind(mq)
+    }
+
+    _persistence(function (err, instance) {
+      if (instance) {
+        instance.broker = broker
+      }
+      cb(err, instance)
+    })
   }
 
   function storeRetained (instance, opts, cb) {
@@ -19,7 +38,7 @@ function abstractPersistence (opts) {
 
     var packet = {
       cmd: 'publish',
-      id: 'broker-42',
+      id: instance.broker.id,
       topic: opts.topic || 'hello/world',
       payload: opts.payload || new Buffer('muahah'),
       qos: 0,
@@ -301,7 +320,7 @@ function abstractPersistence (opts) {
       dup: false,
       length: 14,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42
     }
     var expected = {
@@ -310,7 +329,7 @@ function abstractPersistence (opts) {
       payload: new Buffer('world'),
       qos: 1,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42,
       messageId: 0
     }
@@ -343,7 +362,7 @@ function abstractPersistence (opts) {
       dup: false,
       length: 14,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42,
       messageId: 4242
     }
@@ -353,7 +372,7 @@ function abstractPersistence (opts) {
       payload: new Buffer('world'),
       qos: 1,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42,
       messageId: 0
     }
@@ -406,7 +425,7 @@ function abstractPersistence (opts) {
       dup: false,
       length: 14,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42
     }
 
@@ -435,7 +454,7 @@ function abstractPersistence (opts) {
       dup: false,
       length: 14,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42
     }
     var packet2 = {
@@ -446,7 +465,7 @@ function abstractPersistence (opts) {
       dup: false,
       length: 14,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 43
     }
 
@@ -481,7 +500,7 @@ function abstractPersistence (opts) {
       dup: false,
       length: 14,
       retain: false,
-      brokerId: 'mybroker',
+      brokerId: instance.broker.id,
       brokerCounter: 42
     }
 
@@ -561,9 +580,6 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store, fetch and delete will message', function (t, instance) {
-    var broker = {
-      id: 'mybrokerId'
-    }
     var client = {
       id: '12345'
     }
@@ -573,8 +589,6 @@ function abstractPersistence (opts) {
       qos: 0,
       retain: true
     }
-
-    instance.broker = broker
 
     instance.putWill(client, expected, function (err, c) {
       t.error(err, 'no error')
@@ -599,9 +613,6 @@ function abstractPersistence (opts) {
   })
 
   testInstance('stream all will messages', function (t, instance) {
-    var broker = {
-      id: 'mybrokerId'
-    }
     var client = {
       id: '12345'
     }
@@ -612,15 +623,13 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    instance.broker = broker
-
     instance.putWill(client, toWrite, function (err, c) {
       t.error(err, 'no error')
       t.equal(c, client, 'client matches')
       instance.streamWill().pipe(through.obj(function (chunk, enc, cb) {
         t.deepEqual(chunk, {
           clientId: client.id,
-          brokerId: broker.id,
+          brokerId: instance.broker.id,
           topic: 'hello/died',
           payload: new Buffer('muahahha'),
           qos: 0,
@@ -632,11 +641,11 @@ function abstractPersistence (opts) {
   })
 
   testInstance('stream all will message for unknown brokers', function (t, instance) {
-    var broker = {
-      id: 'mybrokerId'
-    }
+    var originalBroker = instance.broker
     var anotherBroker = {
-      id: 'anotherBroker'
+      id: 'anotherBroker',
+      publish: instance.broker.publish,
+      subscribe: instance.broker.subscribe
     }
     var client = {
       id: '42'
@@ -657,8 +666,6 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    instance.broker = broker
-
     instance.putWill(client, toWrite1, function (err, c) {
       t.error(err, 'no error')
       t.equal(c, client, 'client matches')
@@ -672,7 +679,7 @@ function abstractPersistence (opts) {
         .pipe(through.obj(function (chunk, enc, cb) {
           t.deepEqual(chunk, {
             clientId: client.id,
-            brokerId: broker.id,
+            brokerId: originalBroker.id,
             topic: 'hello/died42',
             payload: new Buffer('muahahha'),
             qos: 0,
