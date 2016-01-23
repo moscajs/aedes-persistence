@@ -247,6 +247,7 @@ var clean = require('./clean') // invented module
 
 abs({
   test: test,
+  buildEmitter: require('mymqemitter'), // optional
   persistence: function build (cb) {
     clean(function (err) {
       cb(err, myperst())
