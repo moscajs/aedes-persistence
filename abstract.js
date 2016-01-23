@@ -641,12 +641,7 @@ function abstractPersistence (opts) {
   })
 
   testInstance('stream all will message for unknown brokers', function (t, instance) {
-    var originalBroker = instance.broker
-    var anotherBroker = {
-      id: 'anotherBroker',
-      publish: instance.broker.publish,
-      subscribe: instance.broker.subscribe
-    }
+    var originalId = instance.broker.id
     var client = {
       id: '42'
     }
@@ -669,7 +664,7 @@ function abstractPersistence (opts) {
     instance.putWill(client, toWrite1, function (err, c) {
       t.error(err, 'no error')
       t.equal(c, client, 'client matches')
-      instance.broker = anotherBroker
+      instance.broker.id = 'anotherBroker'
       instance.putWill(anotherClient, toWrite2, function (err, c) {
         t.error(err, 'no error')
         t.equal(c, anotherClient, 'client matches')
@@ -679,7 +674,7 @@ function abstractPersistence (opts) {
         .pipe(through.obj(function (chunk, enc, cb) {
           t.deepEqual(chunk, {
             clientId: client.id,
-            brokerId: originalBroker.id,
+            brokerId: originalId,
             topic: 'hello/died42',
             payload: new Buffer('muahahha'),
             qos: 0,
