@@ -3,12 +3,14 @@
 var concat = require('concat-stream')
 var through = require('through2')
 var Packet = require('aedes-packet')
-var mqemitter = require('mqemitter')
 
 function abstractPersistence (opts) {
   var test = opts.test
   var _persistence = opts.persistence
-  var buildEmitter = opts.buildEmitter || mqemitter
+
+  // requiring it here so it will not error for modules
+  // not using the default emitter
+  var buildEmitter = opts.buildEmitter || require('mqemitter')
 
   if (_persistence.length === 0) {
     _persistence = function asyncify (cb) {
