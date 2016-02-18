@@ -161,7 +161,7 @@ MemoryPersistence.prototype.outgoingEnqueue = function (sub, packet, cb) {
 
   queue[queue.length] = new Packet(packet)
 
-  cb(null)
+  process.nextTick(cb)
 }
 
 MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
