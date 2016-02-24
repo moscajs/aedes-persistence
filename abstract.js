@@ -269,6 +269,24 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('clean subscriptions with no active subscriptions', function (t, instance) {
+    var client = { id: 'abcde' }
+
+    instance.cleanSubscriptions(client, function (err) {
+      t.notOk(err, 'no error')
+      instance.subscriptionsByTopic('hello', function (err, resubs) {
+        t.notOk(err, 'no error')
+        t.deepEqual(resubs, [], 'no subscriptions')
+
+        instance.subscriptionsByClient(client, function (err, resubs) {
+          t.error(err)
+          t.deepEqual(resubs, null, 'no subscriptions')
+          instance.destroy(t.end.bind(t))
+        })
+      })
+    })
+  })
+
   testInstance('store and count subscriptions', function (t, instance) {
     var client = { id: 'abcde' }
     var subs = [{
