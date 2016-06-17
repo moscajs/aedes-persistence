@@ -154,10 +154,10 @@ should update the `packet.messageId` before updating.
 
 -------------------------------------------------------
 <a name="outgoingClearMessageId"></a>
-### instance.outgoingClearMessageId(client, packet, callback(err))
+### instance.outgoingClearMessageId(client, packet, callback(err, packet))
 
 Removes a packet with the given `messageId` (passing a PUBACK is ok)
-from the persistence.
+from the persistence. Passes back original packet to the callback.
 
 -------------------------------------------------------
 <a name="outgoingStream"></a>

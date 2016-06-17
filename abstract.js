@@ -492,9 +492,11 @@ function abstractPersistence (opts) {
 
     enqueueAndUpdate(t, instance, client, sub, packet1, 42, function (updated1) {
       enqueueAndUpdate(t, instance, client, sub, packet2, 43, function (updated2) {
-        instance.outgoingClearMessageId(client, updated1, function (err) {
+        instance.outgoingClearMessageId(client, updated1, function (err, packet) {
           t.error(err)
-
+          t.deepEqual(packet.messageId, 42, 'must have the same messageId')
+          t.deepEqual(packet.payload.toString(), packet1.payload.toString(), 'must have original payload')
+          t.deepEqual(packet.topic, packet1.topic, 'must have original topic')
           var stream = instance.outgoingStream(client)
 
           stream.pipe(concat(function (list) {

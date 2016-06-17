@@ -199,7 +199,7 @@ MemoryPersistence.prototype.outgoingClearMessageId = function (client, packet, c
     temp = outgoing[i]
     if (temp.messageId === packet.messageId) {
       outgoing.splice(i, 1)
-      return cb()
+      return cb(null, temp)
     }
   }
 
