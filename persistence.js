@@ -203,7 +203,7 @@ MemoryPersistence.prototype.outgoingClearMessageId = function (client, packet, c
     }
   }
 
-  cb(new Error('no such packet'))
+  cb()
 }
 
 MemoryPersistence.prototype.outgoingStream = function (client) {

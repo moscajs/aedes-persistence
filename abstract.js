@@ -709,6 +709,17 @@ function abstractPersistence (opts) {
       })
     })
   })
+
+  testInstance('do not error if unkown messageId in outoingClearMessageId', function (t, instance) {
+    var client = {
+      id: 'abc-123'
+    }
+
+    instance.outgoingClearMessageId(client, 42, function (err) {
+      t.error(err)
+      instance.destroy(t.end.bind(t))
+    })
+  })
 }
 
 module.exports = abstractPersistence
