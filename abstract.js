@@ -658,7 +658,11 @@ function abstractPersistence (opts) {
           qos: 0,
           retain: true
         }, 'packet matches')
-        instance.destroy(t.end.bind(t))
+        cb()
+        instance.delWill(client, function (err, result, client) {
+          t.error(err, 'no error')
+          instance.destroy(t.end.bind(t))
+        })
       }))
     })
   })
@@ -704,7 +708,10 @@ function abstractPersistence (opts) {
             retain: true
           }, 'packet matches')
           cb()
-          instance.destroy(t.end.bind(t))
+          instance.delWill(client, function (err, result, client) {
+            t.error(err, 'no error')
+            instance.destroy(t.end.bind(t))
+          })
         }))
       })
     })
