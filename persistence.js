@@ -22,6 +22,7 @@ function MemoryPersistence () {
   this._outgoing = {}
   this._incoming = {}
   this._wills = {}
+  this._topics = {}
 }
 
 function matchTopic (p) {
@@ -79,6 +80,12 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
   }).forEach(function eachSub (sub) {
     stored.push(sub)
 
+    if (that._topics[sub.topic]) {
+      that._topics[sub.topic].push(client.id)
+    } else {
+      that._topics[sub.topic] = [client.id]
+    }
+
     if (sub.qos > 0) {
       that._subscriptionsCount++
       trie.add(sub.topic, sub)
@@ -99,6 +106,11 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
   }
 
   this._subscriptions[client.id] = stored.filter(function noSub (storedSub) {
+    var indexOfClient = (that._topics[storedSub.topic] || []).indexOf(client.id)
+    if (indexOfClient !== -1) {
+      that._topics[storedSub.topic].splice(indexOfClient, 1)
+    }
+
     var toKeep = subs.indexOf(storedSub.topic) < 0
     if (!toKeep) {
       that._subscriptionsCount--
@@ -297,6 +309,10 @@ MemoryPersistence.prototype.streamWill = function (brokers) {
       this.push(null)
     }
   })
+}
+
+MemoryPersistence.prototype.getClientList = function (topic, cb) {
+  cb(null, (this._topics[topic] || []))
 }
 
 MemoryPersistence.prototype.destroy = function (cb) {
