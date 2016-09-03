@@ -222,11 +222,11 @@ function abstractPersistence (opts) {
       t.notOk(err, 'no error for client 1')
       instance.addSubscriptions(client2, subs, function (err) {
         t.notOk(err, 'no error for client 2')
-        instance.getClientList(subs[0].topic, function (err, clientList) {
-          t.notOk(err, 'no error in clientList')
-          t.deepEqual(clientList, [client1.id, client2.id])
+        var stream = instance.getClientList(subs[0].topic)
+        stream.pipe(concat({encoding: 'buffer'}, function (out) {
+          t.deepEqual(out.toString(), client1.id + client2.id)
           instance.destroy(t.end.bind(t))
-        })
+        }))
       })
     })
   })
@@ -243,17 +243,13 @@ function abstractPersistence (opts) {
       t.notOk(err, 'no error for client 1')
       instance.addSubscriptions(client2, subs, function (err) {
         t.notOk(err, 'no error for client 2')
-        instance.getClientList(subs[0].topic, function (err, clientList) {
-          t.notOk(err, 'no error in clientList')
-          t.deepEqual(clientList, [client1.id, client2.id])
-          instance.removeSubscriptions(client2, [subs[0].topic], function (err, reClient) {
-            t.notOk(err, 'no error for removeSubscriptions')
-            instance.getClientList(subs[0].topic, function (err, clientList) {
-              t.notOk(err, 'Error during getting Client list')
-              t.deepEqual(clientList, [client1.id])
-              instance.destroy(t.end.bind(t))
-            })
-          })
+        instance.removeSubscriptions(client2, [subs[0].topic], function (err, reClient) {
+          t.notOk(err, 'no error for removeSubscriptions')
+          var stream = instance.getClientList(subs[0].topic)
+          stream.pipe(concat({encoding: 'buffer'}, function (out) {
+            t.deepEqual(out.toString(), client1.id)
+            instance.destroy(t.end.bind(t))
+          }))
         })
       })
     })
