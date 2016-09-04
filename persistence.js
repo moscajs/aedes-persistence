@@ -299,6 +299,28 @@ MemoryPersistence.prototype.streamWill = function (brokers) {
   })
 }
 
+MemoryPersistence.prototype.getClientList = function (topic) {
+  var clientSubs = this._subscriptions
+  var keys = Object.keys(clientSubs)
+  return from2.obj(function match (size, next) {
+    var clientKey
+    while ((clientKey = keys.shift()) != null) {
+      var subs = clientSubs[clientKey]
+      var current = 0
+      while (current < subs.length) {
+        if (subs[current].topic === topic) {
+          setImmediate(next, null, subs[current].clientId)
+          current++
+          return
+        }
+      }
+    }
+    if (!clientKey) {
+      next(null, null)
+    }
+  })
+}
+
 MemoryPersistence.prototype.destroy = function (cb) {
   this._retained = null
   if (cb) {

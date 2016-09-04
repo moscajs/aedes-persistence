@@ -210,6 +210,51 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('get client list after subscriptions', function (t, instance) {
+    var client1 = { id: 'abcde' }
+    var client2 = { id: 'efghi' }
+    var subs = [{
+      topic: 'helloagain',
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client1, subs, function (err) {
+      t.notOk(err, 'no error for client 1')
+      instance.addSubscriptions(client2, subs, function (err) {
+        t.notOk(err, 'no error for client 2')
+        var stream = instance.getClientList(subs[0].topic)
+        stream.pipe(concat({encoding: 'object'}, function (out) {
+          t.deepEqual(out, [client1.id, client2.id])
+          instance.destroy(t.end.bind(t))
+        }))
+      })
+    })
+  })
+
+  testInstance('get client list after an unsubscribe', function (t, instance) {
+    var client1 = { id: 'abcde' }
+    var client2 = { id: 'efghi' }
+    var subs = [{
+      topic: 'helloagain',
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client1, subs, function (err) {
+      t.notOk(err, 'no error for client 1')
+      instance.addSubscriptions(client2, subs, function (err) {
+        t.notOk(err, 'no error for client 2')
+        instance.removeSubscriptions(client2, [subs[0].topic], function (err, reClient) {
+          t.notOk(err, 'no error for removeSubscriptions')
+          var stream = instance.getClientList(subs[0].topic)
+          stream.pipe(concat({encoding: 'object'}, function (out) {
+            t.deepEqual(out, [client1.id])
+            instance.destroy(t.end.bind(t))
+          }))
+        })
+      })
+    })
+  })
+
   testInstance('QoS 0 subscriptions, restored but not matched', function (t, instance) {
     var client = { id: 'abcde' }
     var subs = [{
