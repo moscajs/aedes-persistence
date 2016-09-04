@@ -39,7 +39,7 @@ npm install aedes-persistence --save
   * <a href="#getWill"><code>instance.<b>getWill()</b></code></a>
   * <a href="#delWill"><code>instance.<b>delWill()</b></code></a>
   * <a href="#streamWill"><code>instance.<b>streamWill()</b></code></a>
-
+  * <a href="#getClientList"><code>instance.<b>getClientList()</b></code></a>
 -------------------------------------------------------
 <a name="constructor"></a>
 ### persistence([opts])
@@ -218,6 +218,13 @@ format:
   }
 }
 ```
+
+-------------------------------------------------------
+<a name="getCLientList"></a>
+### instance.getClientList(topic)
+
+Returns a stream which has all the clientIds subscribed to the 
+specified topic
 
 <a name="implement"></a>
 ## Implement another persistence

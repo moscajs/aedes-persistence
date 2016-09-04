@@ -302,7 +302,7 @@ MemoryPersistence.prototype.streamWill = function (brokers) {
 MemoryPersistence.prototype.getClientList = function (topic) {
   var clientSubs = this._subscriptions
   var keys = Object.keys(clientSubs)
-  return from2(function match (size, next) {
+  return from2.obj(function match (size, next) {
     var clientKey
     while ((clientKey = keys.shift()) != null) {
       var subs = clientSubs[clientKey]
