@@ -40,6 +40,7 @@ npm install aedes-persistence --save
   * <a href="#delWill"><code>instance.<b>delWill()</b></code></a>
   * <a href="#streamWill"><code>instance.<b>streamWill()</b></code></a>
   * <a href="#getClientList"><code>instance.<b>getClientList()</b></code></a>
+
 -------------------------------------------------------
 <a name="constructor"></a>
 ### persistence([opts])
