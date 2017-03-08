@@ -61,7 +61,7 @@ MemoryPersistence.prototype.createRetainedStream = function (pattern) {
 
 function checkIfSubAdded (sub, addedSubs) {
   for (var i = 0; i < addedSubs.length; i++) {
-    if (sub.topic === addedSubs.topic && sub.clientId === addedSubs.clientId) {
+    if (sub.topic === addedSubs[i].topic && sub.clientId === addedSubs[i].clientId) {
       return true
     }
   }
@@ -87,8 +87,8 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
     }
   }).forEach(function eachSub (sub) {
     if (sub.qos > 0) {
-      that._subscriptionsCount++
       if (!checkIfSubAdded(sub, trie.match(sub.topic))) {
+        that._subscriptionsCount++
         trie.add(sub.topic, sub)
         stored.push(sub)
       }
