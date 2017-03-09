@@ -385,8 +385,11 @@ function abstractPersistence (opts) {
         t.equal(resCLient, client, 'client must be the same')
         t.error(err, 'no error')
         subs[0].clientId = client.id
-        t.deepEqual(instance._trie.match(topic), subs)
-        instance.destroy(t.end.bind(t))
+        instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, subs)
+          instance.destroy(t.end.bind(t))
+        })
       })
     })
   })
@@ -406,10 +409,11 @@ function abstractPersistence (opts) {
       instance.addSubscriptions(client, subs, function (err, resCLient) {
         t.equal(resCLient, client, 'client must be the same')
         t.error(err, 'no error')
-        subs[0].clientId = client.id
-        console.log(instance._subscriptions[client.id], subs)
-        t.deepEqual(instance._subscriptions[client.id], subs)
-        instance.destroy(t.end.bind(t))
+        instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForClient, subs)
+          instance.destroy(t.end.bind(t))
+        })
       })
     })
   })
