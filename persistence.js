@@ -59,6 +59,15 @@ MemoryPersistence.prototype.createRetainedStream = function (pattern) {
   return matchingStream([].concat(this._retained), pattern)
 }
 
+function checkIfSubAdded (sub, addedSubs) {
+  for (var i = 0; i < addedSubs.length; i++) {
+    if (sub.topic === addedSubs[i].topic && sub.clientId === addedSubs[i].clientId) {
+      return true
+    }
+  }
+  return false
+}
+
 MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
   var that = this
   var stored = this._subscriptions[client.id]
@@ -77,11 +86,16 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
       qos: sub.qos
     }
   }).forEach(function eachSub (sub) {
-    stored.push(sub)
-
     if (sub.qos > 0) {
-      that._subscriptionsCount++
-      trie.add(sub.topic, sub)
+      if (!checkIfSubAdded(sub, trie.match(sub.topic))) {
+        that._subscriptionsCount++
+        trie.add(sub.topic, sub)
+        stored.push(sub)
+      }
+    } else {
+      if (!checkIfSubAdded(sub, that._subscriptions[client.id])) {
+        stored.push(sub)
+      }
     }
   })
 

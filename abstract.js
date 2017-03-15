@@ -369,6 +369,55 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('add duplicate subs to qlobber for qos > 0', function (t, instance) {
+    var client = { id: 'abcde' }
+    var topic = 'hello'
+    var subs = [{
+      topic: topic,
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client, subs, function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+
+      instance.addSubscriptions(client, subs, function (err, resCLient) {
+        t.equal(resCLient, client, 'client must be the same')
+        t.error(err, 'no error')
+        subs[0].clientId = client.id
+        instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, subs)
+          instance.destroy(t.end.bind(t))
+        })
+      })
+    })
+  })
+
+  testInstance('add duplicate subs to persistence for qos 0', function (t, instance) {
+    var client = { id: 'abcde' }
+    var topic = 'hello'
+    var subs = [{
+      topic: topic,
+      qos: 0
+    }]
+
+    instance.addSubscriptions(client, subs, function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+
+      instance.addSubscriptions(client, subs, function (err, resCLient) {
+        t.equal(resCLient, client, 'client must be the same')
+        t.error(err, 'no error')
+        instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForClient, subs)
+          instance.destroy(t.end.bind(t))
+        })
+      })
+    })
+  })
+
   testInstance('add outgoing packet and stream it', function (t, instance) {
     var sub = {
       clientId: 'abcde',
