@@ -714,6 +714,7 @@ function abstractPersistence (opts) {
         t.error(err, 'no error')
         t.deepEqual(packet, expected, 'will matches')
         t.equal(c, client, 'client matches')
+        client.brokerId = packet.brokerId
         instance.delWill(client, function (err, packet, c) {
           t.error(err, 'no error')
           t.deepEqual(packet, expected, 'will matches')
@@ -753,6 +754,7 @@ function abstractPersistence (opts) {
           retain: true
         }, 'packet matches')
         cb()
+        client.brokerId = chunk.brokerId
         instance.delWill(client, function (err, result, client) {
           t.error(err, 'no error')
           instance.destroy(t.end.bind(t))
@@ -802,6 +804,7 @@ function abstractPersistence (opts) {
             retain: true
           }, 'packet matches')
           cb()
+          client.brokerId = chunk.brokerId
           instance.delWill(client, function (err, result, client) {
             t.error(err, 'no error')
             instance.destroy(t.end.bind(t))
