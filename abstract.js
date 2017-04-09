@@ -714,6 +714,7 @@ function abstractPersistence (opts) {
         t.error(err, 'no error')
         t.deepEqual(packet, expected, 'will matches')
         t.equal(c, client, 'client matches')
+        client.brokerId = packet.brokerId
         instance.delWill(client, function (err, packet, c) {
           t.error(err, 'no error')
           t.deepEqual(packet, expected, 'will matches')
@@ -753,6 +754,7 @@ function abstractPersistence (opts) {
           retain: true
         }, 'packet matches')
         cb()
+        client.brokerId = chunk.brokerId
         instance.delWill(client, function (err, result, client) {
           t.error(err, 'no error')
           instance.destroy(t.end.bind(t))
@@ -802,11 +804,36 @@ function abstractPersistence (opts) {
             retain: true
           }, 'packet matches')
           cb()
+          client.brokerId = chunk.brokerId
           instance.delWill(client, function (err, result, client) {
             t.error(err, 'no error')
             instance.destroy(t.end.bind(t))
           })
         }))
+      })
+    })
+  })
+
+  testInstance('delete wills from dead brokers', function (t, instance) {
+    var client = {
+      id: '42'
+    }
+
+    var toWrite1 = {
+      topic: 'hello/died42',
+      payload: new Buffer('muahahha'),
+      qos: 0,
+      retain: true
+    }
+
+    instance.putWill(client, toWrite1, function (err, c) {
+      t.error(err, 'no error')
+      t.equal(c, client, 'client matches')
+      instance.broker.id = 'anotherBroker'
+      client.brokerId = instance.broker.id
+      instance.delWill(client, function (err, result, client) {
+        t.error(err, 'no error')
+        instance.destroy(t.end.bind(t))
       })
     })
   })
