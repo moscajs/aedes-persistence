@@ -460,6 +460,48 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('add outgoing packet as a string and stream', function (t, instance) {
+    var sub = {
+      clientId: 'abcde',
+      topic: 'hello',
+      qos: 1
+    }
+    var client = {
+      id: sub.clientId
+    }
+    var packet = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: 'world',
+      qos: 1,
+      dup: false,
+      length: 14,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 42
+    }
+    var expected = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: 'world',
+      qos: 1,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 42,
+      messageId: 0
+    }
+
+    instance.outgoingEnqueue(sub, packet, function (err) {
+      t.error(err)
+      var stream = instance.outgoingStream(client)
+
+      stream.pipe(concat(function (list) {
+        t.deepEqual(list, [expected], 'must return the packet')
+        instance.destroy(t.end.bind(t))
+      }))
+    })
+  })
+
   testInstance('add outgoing packet and stream it twice', function (t, instance) {
     var sub = {
       clientId: 'abcde',
