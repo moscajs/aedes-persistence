@@ -28,13 +28,14 @@
     "faucet": "0.0.1",
     "mqemitter": "^2.0.0",
     "pre-commit": "^1.1.2",
-    "standard": "^7.0.0",
+    "standard": "^10.0.0",
     "tape": "^4.2.2",
     "through2": "^2.0.0"
   },
   "dependencies": {
     "aedes-packet": "^1.0.0",
     "from2": "^2.1.0",
-    "qlobber": "^0.7.0"
+    "qlobber": "^0.7.0",
+    "safe-buffer": "^5.0.1"
   }
 }

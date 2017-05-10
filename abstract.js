@@ -3,6 +3,7 @@
 var concat = require('concat-stream')
 var through = require('through2')
 var Packet = require('aedes-packet')
+var Buffer = require('safe-buffer').Buffer
 
 function abstractPersistence (opts) {
   var test = opts.test
@@ -43,7 +44,7 @@ function abstractPersistence (opts) {
       cmd: 'publish',
       id: instance.broker.id,
       topic: opts.topic || 'hello/world',
-      payload: opts.payload || new Buffer('muahah'),
+      payload: opts.payload || Buffer.from('muahah'),
       qos: 0,
       retain: true
     }
@@ -112,7 +113,7 @@ function abstractPersistence (opts) {
     storeRetained(instance, {}, function (err, packet) {
       t.notOk(err, 'no error')
       storeRetained(instance, {
-        payload: new Buffer('ahah')
+        payload: Buffer.from('ahah')
       }, function (err, packet) {
         t.notOk(err, 'no error')
 
@@ -430,7 +431,7 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 1,
       dup: false,
       length: 14,
@@ -441,7 +442,7 @@ function abstractPersistence (opts) {
     var expected = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 1,
       retain: false,
       brokerId: instance.broker.id,
@@ -514,7 +515,7 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 1,
       dup: false,
       length: 14,
@@ -526,7 +527,7 @@ function abstractPersistence (opts) {
     var expected = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 1,
       retain: false,
       brokerId: instance.broker.id,
@@ -577,7 +578,7 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 1,
       dup: false,
       length: 14,
@@ -606,7 +607,7 @@ function abstractPersistence (opts) {
     var packet1 = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 1,
       dup: false,
       length: 14,
@@ -617,7 +618,7 @@ function abstractPersistence (opts) {
     var packet2 = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('matteo'),
+      payload: Buffer.from('matteo'),
       qos: 1,
       dup: false,
       length: 14,
@@ -654,7 +655,7 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 2,
       dup: false,
       length: 14,
@@ -699,7 +700,7 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       topic: 'hello',
-      payload: new Buffer('world'),
+      payload: Buffer.from('world'),
       qos: 2,
       dup: false,
       length: 14,
@@ -744,7 +745,7 @@ function abstractPersistence (opts) {
     }
     var expected = {
       topic: 'hello/died',
-      payload: new Buffer('muahahha'),
+      payload: Buffer.from('muahahha'),
       qos: 0,
       retain: true
     }
@@ -778,7 +779,7 @@ function abstractPersistence (opts) {
     }
     var toWrite = {
       topic: 'hello/died',
-      payload: new Buffer('muahahha'),
+      payload: Buffer.from('muahahha'),
       qos: 0,
       retain: true
     }
@@ -791,7 +792,7 @@ function abstractPersistence (opts) {
           clientId: client.id,
           brokerId: instance.broker.id,
           topic: 'hello/died',
-          payload: new Buffer('muahahha'),
+          payload: Buffer.from('muahahha'),
           qos: 0,
           retain: true
         }, 'packet matches')
@@ -815,13 +816,13 @@ function abstractPersistence (opts) {
     }
     var toWrite1 = {
       topic: 'hello/died42',
-      payload: new Buffer('muahahha'),
+      payload: Buffer.from('muahahha'),
       qos: 0,
       retain: true
     }
     var toWrite2 = {
       topic: 'hello/died24',
-      payload: new Buffer('muahahha'),
+      payload: Buffer.from('muahahha'),
       qos: 0,
       retain: true
     }
@@ -841,7 +842,7 @@ function abstractPersistence (opts) {
             clientId: client.id,
             brokerId: originalId,
             topic: 'hello/died42',
-            payload: new Buffer('muahahha'),
+            payload: Buffer.from('muahahha'),
             qos: 0,
             retain: true
           }, 'packet matches')
@@ -863,7 +864,7 @@ function abstractPersistence (opts) {
 
     var toWrite1 = {
       topic: 'hello/died42',
-      payload: new Buffer('muahahha'),
+      payload: Buffer.from('muahahha'),
       qos: 0,
       retain: true
     }
