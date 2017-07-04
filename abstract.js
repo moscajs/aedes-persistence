@@ -60,7 +60,12 @@ function abstractPersistence (opts) {
 
       storeRetained(instance, opts, function (err, packet) {
         t.notOk(err, 'no error')
-        var stream = instance.createRetainedStream(pattern)
+        var stream
+        if (pattern.splice) {
+          stream = instance.createRetainedStreamCombi(pattern)
+        } else {
+          stream = instance.createRetainedStream(pattern)
+        }
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [packet], 'must return the packet')
@@ -89,6 +94,10 @@ function abstractPersistence (opts) {
 
   test('look up retained messages with a + pattern', function (t) {
     matchRetainedWithPattern(t, 'hello/+')
+  })
+
+  test('look up retained messages with multiple patterns', function (t) {
+    matchRetainedWithPattern(t, ['hello/+', 'other/hello'])
   })
 
   testInstance('remove retained message', function (t, instance) {

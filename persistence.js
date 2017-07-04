@@ -39,7 +39,13 @@ MemoryPersistence.prototype.storeRetained = function (packet, cb) {
 function matchingStream (current, pattern) {
   var matcher = new Qlobber(QlobberOpts)
 
-  matcher.add(pattern, true)
+  if (pattern.splice) {
+    pattern.map(function (p) {
+      matcher.add(p, true)
+    })
+  } else {
+    matcher.add(pattern, true)
+  }
 
   return from2.obj(function match (size, next) {
     var entry
@@ -57,6 +63,10 @@ function matchingStream (current, pattern) {
 
 MemoryPersistence.prototype.createRetainedStream = function (pattern) {
   return matchingStream([].concat(this._retained), pattern)
+}
+
+MemoryPersistence.prototype.createRetainedStreamCombi = function (patterns) {
+  return matchingStream([].concat(this._retained), patterns)
 }
 
 function checkIfSubAdded (sub, addedSubs) {
