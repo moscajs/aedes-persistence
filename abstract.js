@@ -61,7 +61,7 @@ function abstractPersistence (opts) {
       storeRetained(instance, opts, function (err, packet) {
         t.notOk(err, 'no error')
         var stream
-        if (pattern.splice) {
+        if (Array.isArray(pattern)) {
           stream = instance.createRetainedStreamCombi(pattern)
         } else {
           stream = instance.createRetainedStream(pattern)
