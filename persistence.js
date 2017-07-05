@@ -39,7 +39,7 @@ MemoryPersistence.prototype.storeRetained = function (packet, cb) {
 function matchingStream (current, pattern) {
   var matcher = new Qlobber(QlobberOpts)
 
-  if (pattern.splice) {
+  if (Array.isArray(pattern)) {
     pattern.map(function (p) {
       matcher.add(p, true)
     })
