@@ -60,7 +60,12 @@ function abstractPersistence (opts) {
 
       storeRetained(instance, opts, function (err, packet) {
         t.notOk(err, 'no error')
-        var stream = instance.createRetainedStream(pattern)
+        var stream
+        if (Array.isArray(pattern)) {
+          stream = instance.createRetainedStreamCombi(pattern)
+        } else {
+          stream = instance.createRetainedStream(pattern)
+        }
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [packet], 'must return the packet')
@@ -89,6 +94,10 @@ function abstractPersistence (opts) {
 
   test('look up retained messages with a + pattern', function (t) {
     matchRetainedWithPattern(t, 'hello/+')
+  })
+
+  test('look up retained messages with multiple patterns', function (t) {
+    matchRetainedWithPattern(t, ['hello/+', 'other/hello'])
   })
 
   testInstance('remove retained message', function (t, instance) {
@@ -251,6 +260,30 @@ function abstractPersistence (opts) {
             t.deepEqual(out, [client1.id])
             instance.destroy(t.end.bind(t))
           }))
+        })
+      })
+    })
+  })
+
+  testInstance('get subscriptions list after an unsubscribe', function (t, instance) {
+    var client1 = { id: 'abcde' }
+    var client2 = { id: 'efghi' }
+    var subs = [{
+      topic: 'helloagain',
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client1, subs, function (err) {
+      t.notOk(err, 'no error for client 1')
+      instance.addSubscriptions(client2, subs, function (err) {
+        t.notOk(err, 'no error for client 2')
+        instance.removeSubscriptions(client2, [subs[0].topic], function (err, reClient) {
+          t.notOk(err, 'no error for removeSubscriptions')
+          instance.subscriptionsByTopic(subs[0].topic, function (err, clients) {
+            t.notOk(err, 'no error getting subscriptions by topic')
+            t.deepEqual(clients[0].clientId, client1.id)
+            instance.destroy(t.end.bind(t))
+          })
         })
       })
     })

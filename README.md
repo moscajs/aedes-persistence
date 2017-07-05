@@ -22,6 +22,7 @@ npm install aedes-persistence --save
   * <a href="#constructor"><code><b>persistence()</b></code></a>
   * <a href="#storeRetained"><code>instance.<b>storeRetained()</b></code></a>
   * <a href="#createRetainedStream"><code>instance.<b>createRetainedStream()</b></code></a>
+  * <a href="#createRetainedStreamCombi"><code>instance.<b>createRetainedStreamCombi()</b></code></a>
   * <a href="#addSubscriptions"><code>instance.<b>addSubscriptions()</b></code></a>
   * <a href="#removeSubscriptions"><code>instance.<b>removeSubscriptions()</b></code></a>
   * <a href="#subscriptionsByClient"><code>instance.<b>subscriptionsByClient()</b></code></a>
@@ -59,7 +60,14 @@ Store a retained message, calls the callback when it was saved.
 ### instance.createRetainedStream(pattern)
 
 Return a stream that will load all retained messages matching the given
-pattern (according to the MQTT spec) asynchronously.
+pattern (according to the MQTT spec) asynchronously. Deprecated.
+
+-------------------------------------------------------
+<a name="createRetainedStreamCombi"></a>
+### instance.createRetainedStreamCombi(patterns)
+
+Return a stream that will load all retained messages matching given
+patterns (according to the MQTT spec) asynchronously.
 
 -------------------------------------------------------
 <a name="addSubscriptions"></a>
