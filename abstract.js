@@ -624,6 +624,7 @@ function abstractPersistence (opts) {
       var stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
+        list[0].messageId = updated.messageId
         t.deepEqual(list, [updated], 'must return the packet')
         instance.destroy(t.end.bind(t))
       }))
@@ -670,6 +671,7 @@ function abstractPersistence (opts) {
           var stream = instance.outgoingStream(client)
 
           stream.pipe(concat(function (list) {
+            list[0].messageId = updated2.messageId
             t.deepEqual(list, [updated2], 'must return the packet')
             instance.destroy(t.end.bind(t))
           }))
