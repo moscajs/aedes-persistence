@@ -29,6 +29,7 @@ function matchTopic (p) {
 }
 
 MemoryPersistence.prototype.storeRetained = function (packet, cb) {
+  packet = Object.assign({}, packet)
   this._retained = this._retained.filter(matchTopic, packet)
 
   if (packet.payload.length > 0) this._retained.push(packet)
