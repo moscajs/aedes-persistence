@@ -622,9 +622,10 @@ function abstractPersistence (opts) {
 
     enqueueAndUpdate(t, instance, client, sub, packet, 42, function (updated) {
       var stream = instance.outgoingStream(client)
-
+      delete updated.messageId
       stream.pipe(concat(function (list) {
-        list[0].messageId = updated.messageId
+        delete list[0].messageId
+        t.notEqual(list[0], updated, 'must not be the same object')
         t.deepEqual(list, [updated], 'must return the packet')
         instance.destroy(t.end.bind(t))
       }))
@@ -669,9 +670,10 @@ function abstractPersistence (opts) {
           t.deepEqual(packet.payload.toString(), packet1.payload.toString(), 'must have original payload')
           t.deepEqual(packet.topic, packet1.topic, 'must have original topic')
           var stream = instance.outgoingStream(client)
-
+          delete updated2.messageId
           stream.pipe(concat(function (list) {
-            list[0].messageId = updated2.messageId
+            delete list[0].messageId
+            t.notEqual(list[0], updated2, 'must not be the same object')
             t.deepEqual(list, [updated2], 'must return the packet')
             instance.destroy(t.end.bind(t))
           }))
