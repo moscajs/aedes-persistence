@@ -159,7 +159,7 @@ objects returned by [`subscriptionsByTopic`](#subscriptionsByTopic). Deprecated.
 <a name="outgoingEnqueueCombi"></a>
 ### instance.outgoingEnqueueCombi(subscriptions, packet, callback(err))
 
-Enqueue a potentially offline delivery. `subscription` is one of the
+Enqueue a potentially offline delivery. `subscriptions` is the whole subscriptions
 objects returned by [`subscriptionsByTopic`](#subscriptionsByTopic).
 
 -------------------------------------------------------
