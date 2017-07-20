@@ -30,6 +30,7 @@ npm install aedes-persistence --save
   * <a href="#subscriptionsByTopic"><code>instance.<b>subscriptionsByTopic()</b></code></a>
   * <a href="#cleanSubscriptions"><code>instance.<b>cleanSubscriptions()</b></code></a>
   * <a href="#outgoingEnqueue"><code>instance.<b>outgoingEnqueue()</b></code></a>
+  * <a href="#outgoingEnqueueCombi"><code>instance.<b>outgoingEnqueueCombi()</b></code></a>
   * <a href="#outgoingUpdate"><code>instance.<b>outgoingUpdate()</b></code></a>
   * <a href="#outgoingClearMessageId"><code>instance.<b>outgoingClearMessageId()</b></code></a>
   * <a href="#outgoingStream"><code>instance.<b>outgoingStream()</b></code></a>
@@ -152,6 +153,13 @@ Removes all offline subscriptions for a given client.
 ### instance.outgoingEnqueue(subscription, packet, callback(err))
 
 Enqueue a potentially offline delivery. `subscription` is one of the
+objects returned by [`subscriptionsByTopic`](#subscriptionsByTopic). Deprecated.
+
+-------------------------------------------------------
+<a name="outgoingEnqueueCombi"></a>
+### instance.outgoingEnqueueCombi(subscriptions, packet, callback(err))
+
+Enqueue a potentially offline delivery. `subscriptions` is the whole subscriptions
 objects returned by [`subscriptionsByTopic`](#subscriptionsByTopic).
 
 -------------------------------------------------------

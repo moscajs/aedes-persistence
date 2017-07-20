@@ -178,12 +178,18 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
 }
 
 MemoryPersistence.prototype.outgoingEnqueue = function (sub, packet, cb) {
-  var id = sub.clientId
-  var queue = this._outgoing[id] || []
+  this.outgoingEnqueueCombi([sub], packet, cb)
+}
 
-  this._outgoing[id] = queue
+MemoryPersistence.prototype.outgoingEnqueueCombi = function (subs, packet, cb) {
+  for (var i = 0; i < subs.length; i++) {
+    var id = subs[i].clientId
+    var queue = this._outgoing[id] || []
 
-  queue[queue.length] = new Packet(packet)
+    this._outgoing[id] = queue
+
+    queue[queue.length] = new Packet(packet)
+  }
 
   process.nextTick(cb)
 }
