@@ -494,6 +494,61 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('add outgoing packet for multiple subs and stream to all', function (t, instance) {
+    var sub = {
+      clientId: 'abcde',
+      topic: 'hello',
+      qos: 1
+    }
+    var sub2 = {
+      clientId: 'fghih',
+      topic: 'hello',
+      qos: 1
+    }
+    var subs = [sub, sub2]
+    var client = {
+      id: sub.clientId
+    }
+    var client2 = {
+      id: sub2.clientId
+    }
+    var packet = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 1,
+      dup: false,
+      length: 14,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 42
+    }
+    var expected = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 1,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 42,
+      messageId: 0
+    }
+
+    instance.outgoingEnqueueCombi(subs, packet, function (err) {
+      t.error(err)
+      var stream = instance.outgoingStream(client)
+      stream.pipe(concat(function (list) {
+        t.deepEqual(list, [expected], 'must return the packet')
+
+        var stream2 = instance.outgoingStream(client2)
+        stream2.pipe(concat(function (list) {
+          t.deepEqual(list, [expected], 'must return the packet')
+          instance.destroy(t.end.bind(t))
+        }))
+      }))
+    })
+  })
+
   testInstance('add outgoing packet as a string and stream', function (t, instance) {
     var sub = {
       clientId: 'abcde',
@@ -525,7 +580,7 @@ function abstractPersistence (opts) {
       messageId: 0
     }
 
-    instance.outgoingEnqueue(sub, packet, function (err) {
+    instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
       var stream = instance.outgoingStream(client)
 
@@ -568,7 +623,7 @@ function abstractPersistence (opts) {
       messageId: 0
     }
 
-    instance.outgoingEnqueue(sub, packet, function (err) {
+    instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
       var stream = instance.outgoingStream(client)
 
@@ -587,7 +642,7 @@ function abstractPersistence (opts) {
   })
 
   function enqueueAndUpdate (t, instance, client, sub, packet, messageId, callback) {
-    instance.outgoingEnqueue(sub, packet, function (err) {
+    instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
       var updated = new Packet(packet)
       updated.messageId = messageId
@@ -701,7 +756,7 @@ function abstractPersistence (opts) {
       brokerCounter: 42
     }
 
-    instance.outgoingEnqueue(sub, packet, function (err) {
+    instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
       var updated = new Packet(packet)
       updated.messageId = 42
