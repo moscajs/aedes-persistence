@@ -96,7 +96,7 @@ This is called when a client issue a SUBSCRIBE packet.
 <a name="removeSubscriptions"></a>
 ### instance.removeSubscriptions(client, subscriptions, callback(err, client))
 
-The inverse of [`addSubscriptions`](#addSubscriptions).
+The inverse of [`addSubscriptions`](#addSubscriptions) but subscriptions is an array of topic names.
 
 -------------------------------------------------------
 <a name="subscriptionsByClient"></a>

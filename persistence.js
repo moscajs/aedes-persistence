@@ -179,20 +179,24 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
 }
 
 MemoryPersistence.prototype.outgoingEnqueue = function (sub, packet, cb) {
-  this.outgoingEnqueueCombi([sub], packet, cb)
+  _outgoingEnqueue.call(this, sub, packet)
+  process.nextTick(cb)
 }
 
 MemoryPersistence.prototype.outgoingEnqueueCombi = function (subs, packet, cb) {
   for (var i = 0; i < subs.length; i++) {
-    var id = subs[i].clientId
-    var queue = this._outgoing[id] || []
-
-    this._outgoing[id] = queue
-
-    queue[queue.length] = new Packet(packet)
+    _outgoingEnqueue.call(this, subs[i], packet)
   }
-
   process.nextTick(cb)
+}
+
+function _outgoingEnqueue (sub, packet) {
+  var id = sub.clientId
+  var queue = this._outgoing[id] || []
+
+  this._outgoing[id] = queue
+
+  queue[queue.length] = new Packet(packet)
 }
 
 MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
