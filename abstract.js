@@ -136,6 +136,30 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('Create a new packet while storing a retained message', function (t, instance) {
+    var packet = {
+      cmd: 'publish',
+      id: instance.broker.id,
+      topic: opts.topic || 'hello/world',
+      payload: opts.payload || Buffer.from('muahah'),
+      qos: 0,
+      retain: true
+    }
+    var newPacket = Object.assign({}, packet)
+
+    instance.storeRetained(packet, function (err) {
+      t.notOk(err, 'no error')
+      // packet reference change to check if a new packet is stored always
+      packet.retain = false
+      var stream = instance.createRetainedStream('#')
+
+      stream.pipe(concat(function (list) {
+        t.deepEqual(list, [newPacket], 'must return the last packet')
+        instance.destroy(t.end.bind(t))
+      }))
+    })
+  })
+
   testInstance('store and look up subscriptions by client', function (t, instance) {
     var client = { id: 'abcde' }
     var subs = [{
