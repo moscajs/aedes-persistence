@@ -427,7 +427,7 @@ function abstractPersistence (opts) {
     })
   })
 
-  testInstance('add duplicate subs to qlobber for qos > 0', function (t, instance) {
+  testInstance('add duplicate subs to persistence for qos > 0', function (t, instance) {
     var client = { id: 'abcde' }
     var topic = 'hello'
     var subs = [{

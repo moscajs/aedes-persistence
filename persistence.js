@@ -1,7 +1,9 @@
 'use strict'
 
 var from2 = require('from2')
-var Qlobber = require('qlobber').Qlobber
+var qlobber = require('qlobber')
+var Qlobber = qlobber.Qlobber
+var QlobberTrue = qlobber.QlobberTrue
 var Packet = require('aedes-packet')
 var QlobberOpts = {
   wildcard_one: '+',
@@ -38,21 +40,21 @@ MemoryPersistence.prototype.storeRetained = function (packet, cb) {
 }
 
 function matchingStream (current, pattern) {
-  var matcher = new Qlobber(QlobberOpts)
+  var matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
     pattern.map(function (p) {
-      matcher.add(p, true)
+      matcher.add(p)
     })
   } else {
-    matcher.add(pattern, true)
+    matcher.add(pattern)
   }
 
   return from2.obj(function match (size, next) {
     var entry
 
     while ((entry = current.shift()) != null) {
-      if (matcher.match(entry.topic).length > 0) {
+      if (matcher.test(entry.topic)) {
         setImmediate(next, null, entry)
         return
       }
