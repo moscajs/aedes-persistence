@@ -43,7 +43,7 @@ function matchingStream (current, pattern) {
   var matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
-    pattern.map(function (p) {
+    pattern.forEach(function (p) {
       matcher.add(p)
     })
   } else {
