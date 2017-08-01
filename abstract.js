@@ -365,7 +365,14 @@ function abstractPersistence (opts) {
           instance.subscriptionsByClient(client, function (err, resubs) {
             t.error(err)
             t.deepEqual(resubs, null, 'no subscriptions')
-            instance.destroy(t.end.bind(t))
+
+            instance.countOffline(function (err, subsCount, clientsCount) {
+              t.error(err, 'no error')
+              t.equal(subsCount, 0, 'no subscriptions added')
+              t.equal(clientsCount, 0, 'no clients added')
+
+              instance.destroy(t.end.bind(t))
+            })
           })
         })
       })
@@ -384,7 +391,55 @@ function abstractPersistence (opts) {
         instance.subscriptionsByClient(client, function (err, resubs) {
           t.error(err)
           t.deepEqual(resubs, null, 'no subscriptions')
-          instance.destroy(t.end.bind(t))
+
+          instance.countOffline(function (err, subsCount, clientsCount) {
+            t.error(err, 'no error')
+            t.equal(subsCount, 0, 'no subscriptions added')
+            t.equal(clientsCount, 0, 'no clients added')
+
+            instance.destroy(t.end.bind(t))
+          })
+        })
+      })
+    })
+  })
+
+  testInstance('same topic, different QoS', function (t, instance) {
+    var client = { id: 'abcde' }
+    var subs = [{
+      topic: 'hello',
+      qos: 0
+    }, {
+      topic: 'hello',
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client, subs, function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+
+      instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+        t.error(err, 'no error')
+        t.deepEqual(subsForClient, [{
+          topic: 'hello',
+          qos: 1
+        }])
+
+        instance.subscriptionsByTopic('hello', function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, [{
+            clientId: 'abcde',
+            topic: 'hello',
+            qos: 1
+          }])
+
+          instance.countOffline(function (err, subsCount, clientsCount) {
+            t.error(err, 'no error')
+            t.equal(subsCount, 1, 'one subscription added')
+            t.equal(clientsCount, 1, 'one client added')
+
+            instance.destroy(t.end.bind(t))
+          })
         })
       })
     })
@@ -417,10 +472,40 @@ function abstractPersistence (opts) {
 
           instance.countOffline(function (err, subsCount, clientsCount) {
             t.error(err, 'no error')
-            t.equal(subsCount, 1, 'one subscriptions added')
+            t.equal(subsCount, 1, 'one subscription added')
             t.equal(clientsCount, 1, 'one client added')
 
-            instance.destroy(t.end.bind(t))
+            instance.removeSubscriptions(client, ['matteo'], function (err, reClient) {
+              t.error(err, 'no error')
+
+              instance.countOffline(function (err, subsCount, clientsCount) {
+                t.error(err, 'no error')
+                t.equal(subsCount, 0, 'zero subscriptions added')
+                t.equal(clientsCount, 1, 'one client added')
+
+                instance.removeSubscriptions(client, ['noqos'], function (err, reClient) {
+                  t.error(err, 'no error')
+
+                  instance.countOffline(function (err, subsCount, clientsCount) {
+                    t.error(err, 'no error')
+                    t.equal(subsCount, 0, 'zero subscriptions added')
+                    t.equal(clientsCount, 0, 'zero clients added')
+
+                    instance.removeSubscriptions(client, ['noqos'], function (err, reClient) {
+                      t.error(err, 'no error')
+
+                      instance.countOffline(function (err, subsCount, clientsCount) {
+                        t.error(err, 'no error')
+                        t.equal(subsCount, 0, 'zero subscriptions added')
+                        t.equal(clientsCount, 0, 'zero clients added')
+
+                        instance.destroy(t.end.bind(t))
+                      })
+                    })
+                  })
+                })
+              })
+            })
           })
         })
       })

@@ -33,11 +33,11 @@ QlobberSub.prototype._add_value = function (clientMap, val) {
 }
 
 QlobberSub.prototype._add_values = function (dest, clientMap) {
-  clientMap.forEach(function (topicMap, clientId) {
-    topicMap.forEach(function (qos, topic) {
+  for (var [clientId, topicMap] of clientMap) {
+    for (var [topic, qos] of topicMap) {
       dest.push({ clientId: clientId, topic: topic, qos: qos })
-    })
-  })
+    }
+  }
 }
 
 QlobberSub.prototype._remove_value = function (clientMap, val) {
@@ -93,9 +93,9 @@ function matchingStream (current, pattern) {
   var matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
-    pattern.forEach(function (p) {
+    for (var p of pattern) {
       matcher.add(p)
-    })
+    }
   } else {
     matcher.add(pattern)
   }
@@ -123,7 +123,6 @@ MemoryPersistence.prototype.createRetainedStreamCombi = function (patterns) {
 }
 
 MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
-  var that = this
   var stored = this._subscriptions.get(client.id)
   var trie = this._trie
 
@@ -133,46 +132,41 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
     this._clientsCount++
   }
 
-  subs.forEach(function eachSub (sub) {
+  for (var sub of subs) {
     if (sub.qos > 0) {
-      var val = { clientId: client.id, sub: sub }
-      if (!trie.test(sub.topic, val)) {
-        that._subscriptionsCount++
-        trie.add(sub.topic, val)
-        stored.set(sub.topic, sub.qos)
-      }
+      this._subscriptionsCount++
+      trie.add(sub.topic, { clientId: client.id, sub: sub })
+      stored.set(sub.topic, sub.qos)
     } else {
       if (!stored.has(sub.topic)) {
-        // TODO: Why aren't we increasing _subscriptionsCount?
         stored.set(sub.topic, sub.qos)
       }
     }
-  })
+  }
 
   cb(null, client)
 }
 
 MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
-  var that = this
   var stored = this._subscriptions.get(client.id)
   var trie = this._trie
 
-  if (!stored) {
-    stored = new Map()
-    this._subscriptions.set(client.id, stored)
-    // TODO: Do we need to increase _clientsCount?
-  }
-
-  subs.forEach(function eachSub (topic) {
-    if (stored.delete(topic)) {
-      that._subscriptionsCount--
-      trie.remove(topic, { clientId: client.id, topic: topic })
+  if (stored) {
+    for (var topic of subs) {
+      var qos = stored.get(topic)
+      if (qos !== undefined) {
+        if (qos > 0) {
+          this._subscriptionsCount--
+          trie.remove(topic, { clientId: client.id, topic: topic })
+        }
+        stored.delete(topic)
+      }
     }
-  })
 
-  if (stored.size === 0) {
-    this._clientsCount--
-    this._subscriptions.delete(client.id)
+    if (stored.size === 0) {
+      this._clientsCount--
+      this._subscriptions.delete(client.id)
+    }
   }
 
   cb(null, client)
@@ -183,9 +177,9 @@ MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
   var stored = this._subscriptions.get(client.id)
   if (stored) {
     subs = []
-    stored.forEach(function (qos, topic) {
+    for (var [topic, qos] of stored) {
       subs.push({ topic: topic, qos: qos })
-    })
+    }
   }
   cb(null, subs, client)
 }
@@ -203,11 +197,12 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
   var stored = this._subscriptions.get(client.id)
 
   if (stored) {
-    stored.forEach(function removeTrie (qos, topic) {
-      trie.remove(topic, { clientId: client.id, topic: topic })
-    })
-
-    // TODO: What about _subscriptionsCount?
+    for (var [topic, qos] of stored) {
+      if (qos > 0) {
+        this._subscriptionsCount--
+        trie.remove(topic, { clientId: client.id, topic: topic })
+      }
+    }
 
     this._clientsCount--
     this._subscriptions.delete(client.id)
