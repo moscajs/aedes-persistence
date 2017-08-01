@@ -32,15 +32,10 @@ QlobberSub.prototype._add_value = function (clientMap, val) {
   topicMap.set(val.sub.topic, val.sub.qos)
 }
 
-QlobberSub.prototype._add_values = function (destClientMap, originClientMap) {
-  originClientMap.forEach(function (originTopicMap, clientId) {
-    var destTopicMap = destClientMap.get(clientId)
-    if (!destTopicMap) {
-      destTopicMap = new Map()
-      destClientMap.set(clientId, destTopicMap)
-    }
-    originTopicMap.forEach(function (qos, topic) {
-      destTopicMap.set(topic, qos)
+QlobberSub.prototype._add_values = function (dest, clientMap) {
+  clientMap.forEach(function (topicMap, clientId) {
+    topicMap.forEach(function (qos, topic) {
+      dest.push({ clientId: clientId, topic: topic, qos: qos })
     })
   })
 }
@@ -62,7 +57,7 @@ QlobberSub.prototype.test_values = function (clientMap, val) {
 }
 
 QlobberSub.prototype.match = function (topic) {
-  return this._match2(new Map(), topic)
+  return this._match([], 0, topic.split(this._separator), this._trie)
 }
 
 function MemoryPersistence () {
@@ -184,9 +179,8 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
 }
 
 MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
-  var stored = this._subscriptions.get(client.id)
-  // TODO: Just returning stored would be more efficient
   var subs = null
+  var stored = this._subscriptions.get(client.id)
   if (stored) {
     subs = []
     stored.forEach(function (qos, topic) {
@@ -201,15 +195,7 @@ MemoryPersistence.prototype.countOffline = function (cb) {
 }
 
 MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
-  var clientMap = this._trie.match(pattern)
-  // TODO: Just returning subs would be more efficient
-  var subs = []
-  clientMap.forEach(function (topicMap, clientId) {
-    topicMap.forEach(function (qos, topic) {
-      subs.push({ clientId: clientId, topic: topic, qos: qos })
-    })
-  })
-  cb(null, subs)
+  cb(null, this._trie.match(pattern))
 }
 
 MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
