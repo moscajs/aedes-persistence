@@ -31,7 +31,15 @@ function abstractPersistence (opts) {
 
     _persistence(function (err, instance) {
       if (instance) {
+        if (instance.on) {
+          instance.on('ready', function () {
+            cb(err, instance)
+          })
+        }
         instance.broker = broker
+        if (instance.on) {
+          return
+        }
       }
       cb(err, instance)
     })
