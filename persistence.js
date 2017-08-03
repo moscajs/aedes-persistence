@@ -1,67 +1,13 @@
 'use strict'
 
-var util = require('util')
 var from2 = require('from2')
-var qlobber = require('qlobber')
-var Qlobber = qlobber.Qlobber
-var QlobberTrue = qlobber.QlobberTrue
+var QlobberSub = require('./qlobber-sub')
+var QlobberTrue = require('qlobber').QlobberTrue
 var Packet = require('aedes-packet')
 var QlobberOpts = {
   wildcard_one: '+',
   wildcard_some: '#',
   separator: '/'
-}
-
-function QlobberSub (options) {
-  Qlobber.call(this, options)
-}
-
-util.inherits(QlobberSub, Qlobber)
-
-QlobberSub.prototype._initial_value = function (val) {
-  var topicMap = new Map().set(val.sub.topic, val.sub.qos)
-  return new Map().set(val.clientId, topicMap)
-}
-
-QlobberSub.prototype._add_value = function (clientMap, val) {
-  var topicMap = clientMap.get(val.clientId)
-  if (!topicMap) {
-    topicMap = new Map()
-    clientMap.set(val.clientId, topicMap)
-  }
-  topicMap.set(val.sub.topic, val.sub.qos)
-}
-
-QlobberSub.prototype._add_values = function (dest, clientMap) {
-  for (var clientIdAndTopicMap of clientMap) {
-    for (var topicAndQos of clientIdAndTopicMap[1]) {
-      dest.push({
-        clientId: clientIdAndTopicMap[0],
-        topic: topicAndQos[0],
-        qos: topicAndQos[1]
-      })
-    }
-  }
-}
-
-QlobberSub.prototype._remove_value = function (clientMap, val) {
-  var topicMap = clientMap.get(val.clientId)
-  if (topicMap) {
-    topicMap.delete(val.topic)
-    if (topicMap.size === 0) {
-      clientMap.delete(val.clientId)
-    }
-  }
-  return clientMap.size === 0
-}
-
-QlobberSub.prototype.test_values = function (clientMap, val) {
-  var topicMap = clientMap.get(val.clientId)
-  return topicMap && topicMap.has(val.sub.topic)
-}
-
-QlobberSub.prototype.match = function (topic) {
-  return this._match([], 0, topic.split(this._separator), this._trie)
 }
 
 function MemoryPersistence () {
@@ -139,7 +85,11 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
   for (var sub of subs) {
     if (sub.qos > 0) {
       this._subscriptionsCount++
-      trie.add(sub.topic, { clientId: client.id, sub: sub })
+      trie.add(sub.topic, {
+        clientId: client.id,
+        topic: sub.topic,
+        qos: sub.qos
+      })
       stored.set(sub.topic, sub.qos)
     } else {
       if (!stored.has(sub.topic)) {
