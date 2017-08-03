@@ -33,9 +33,13 @@ QlobberSub.prototype._add_value = function (clientMap, val) {
 }
 
 QlobberSub.prototype._add_values = function (dest, clientMap) {
-  for (var [clientId, topicMap] of clientMap) {
-    for (var [topic, qos] of topicMap) {
-      dest.push({ clientId: clientId, topic: topic, qos: qos })
+  for (var clientIdAndTopicMap of clientMap) {
+    for (var topicAndQos of clientIdAndTopicMap[1]) {
+      dest.push({
+        clientId: clientIdAndTopicMap[0],
+        topic: topicAndQos[0],
+        qos: topicAndQos[1]
+      })
     }
   }
 }
@@ -177,8 +181,8 @@ MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
   var stored = this._subscriptions.get(client.id)
   if (stored) {
     subs = []
-    for (var [topic, qos] of stored) {
-      subs.push({ topic: topic, qos: qos })
+    for (var topicAndQos of stored) {
+      subs.push({ topic: topicAndQos[0], qos: topicAndQos[1] })
     }
   }
   cb(null, subs, client)
@@ -197,9 +201,10 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
   var stored = this._subscriptions.get(client.id)
 
   if (stored) {
-    for (var [topic, qos] of stored) {
-      if (qos > 0) {
+    for (var topicAndQos of stored) {
+      if (topicAndQos[1] > 0) {
         this._subscriptionsCount--
+        var topic = topicAndQos[0]
         trie.remove(topic, { clientId: client.id, topic: topic })
       }
     }
