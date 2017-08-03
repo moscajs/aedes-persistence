@@ -8,6 +8,7 @@ var Buffer = require('safe-buffer').Buffer
 function abstractPersistence (opts) {
   var test = opts.test
   var _persistence = opts.persistence
+  var waitForReady = opts.waitForReady
 
   // requiring it here so it will not error for modules
   // not using the default emitter
@@ -31,13 +32,19 @@ function abstractPersistence (opts) {
 
     _persistence(function (err, instance) {
       if (instance) {
-        if (instance.on) {
+        // Wait for ready event, if applicable, to ensure the persistence isn't
+        // destroyed while it's still being set up.
+        // https://github.com/mcollina/aedes-persistence-redis/issues/41
+        if (waitForReady) {
+          // We have to listen to 'ready' before setting broker because that
+          // can result in 'ready' being emitted.
           instance.on('ready', function () {
-            cb(err, instance)
+            cb(null, instance)
           })
         }
         instance.broker = broker
-        if (instance.on) {
+        if (waitForReady) {
+          // 'ready' event will call back.
           return
         }
       }
