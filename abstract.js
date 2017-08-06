@@ -460,6 +460,91 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('replace subscriptions', function (t, instance) {
+    var client = { id: 'abcde' }
+    var topic = 'hello'
+    var sub = {
+      topic: topic,
+      qos: 0
+    }
+    var subByTopic = {
+      clientId: client.id,
+      topic: topic,
+      qos: 0
+    }
+    // Add with QoS 0
+    instance.addSubscriptions(client, [sub], function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+      instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+        t.error(err, 'no error')
+        t.deepEqual(subsForClient, [sub])
+        instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, [])
+          // Replace with QoS 1
+          sub.qos = subByTopic.qos = 1
+          instance.addSubscriptions(client, [sub], function (err, reClient) {
+            t.equal(reClient, client, 'client must be the same')
+            t.error(err, 'no error')
+            instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+              t.error(err, 'no error')
+              t.deepEqual(subsForClient, [sub])
+              instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+                t.error(err, 'no error')
+                t.deepEqual(subsForTopic, [subByTopic])
+                // Replace with QoS 2
+                sub.qos = subByTopic.qos = 2
+                instance.addSubscriptions(client, [sub], function (err, reClient) {
+                  t.equal(reClient, client, 'client must be the same')
+                  t.error(err, 'no error')
+                  instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+                    t.error(err, 'no error')
+                    t.deepEqual(subsForClient, [sub])
+                    instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+                      t.error(err, 'no error')
+                      t.deepEqual(subsForTopic, [subByTopic])
+
+                      // Back to QoS 1
+                      sub.qos = subByTopic.qos = 1
+                      instance.addSubscriptions(client, [sub], function (err, reClient) {
+                        t.equal(reClient, client, 'client must be the same')
+                        t.error(err, 'no error')
+                        instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+                          t.error(err, 'no error')
+                          t.deepEqual(subsForClient, [sub])
+                          instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+                            t.error(err, 'no error')
+                            t.deepEqual(subsForTopic, [subByTopic])
+                            // Back to QoS 0
+                            sub.qos = subByTopic.qos = 0
+                            instance.addSubscriptions(client, [sub], function (err, reClient) {
+                              t.equal(reClient, client, 'client must be the same')
+                              t.error(err, 'no error')
+                              instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+                                t.error(err, 'no error')
+                                t.deepEqual(subsForClient, [sub])
+                                instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+                                  t.error(err, 'no error')
+                                  t.deepEqual(subsForTopic, [])
+                                  instance.destroy(t.end.bind(t))
+                                })
+                              })
+                            })
+                          })
+                        })
+                      })
+                    })
+                  })
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+
   testInstance('store and count subscriptions', function (t, instance) {
     var client = { id: 'abcde' }
     var subs = [{

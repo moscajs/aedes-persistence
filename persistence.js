@@ -90,12 +90,16 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
         topic: sub.topic,
         qos: sub.qos
       })
-      stored.set(sub.topic, sub.qos)
     } else {
-      if (!stored.has(sub.topic)) {
-        stored.set(sub.topic, sub.qos)
+      var qos = stored.get(sub.topic)
+      if ((qos !== undefined) && (qos > 0)) {
+        trie.remove(sub.topic, {
+          clientId: client.id,
+          topic: sub.topic
+        })
       }
     }
+    stored.set(sub.topic, sub.qos)
   }
 
   cb(null, client)
