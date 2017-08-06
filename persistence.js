@@ -83,21 +83,23 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
   }
 
   for (var sub of subs) {
+    var qos = stored.get(sub.topic)
+    var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
     if (sub.qos > 0) {
-      this._subscriptionsCount++
+      if (!hasQoSGreaterThanZero) {
+        this._subscriptionsCount++
+      }
       trie.add(sub.topic, {
         clientId: client.id,
         topic: sub.topic,
         qos: sub.qos
       })
-    } else {
-      var qos = stored.get(sub.topic)
-      if ((qos !== undefined) && (qos > 0)) {
-        trie.remove(sub.topic, {
-          clientId: client.id,
-          topic: sub.topic
-        })
-      }
+    } else if (hasQoSGreaterThanZero) {
+      trie.remove(sub.topic, {
+        clientId: client.id,
+        topic: sub.topic
+      })
+      this._subscriptionsCount--
     }
     stored.set(sub.topic, sub.qos)
   }
