@@ -465,90 +465,41 @@ function abstractPersistence (opts) {
   testInstance('replace subscriptions', function (t, instance) {
     var client = { id: 'abcde' }
     var topic = 'hello'
-    var sub = {
-      topic: topic,
-      qos: 0
-    }
-    var subByTopic = {
-      clientId: client.id,
-      topic: topic,
-      qos: 0
-    }
-    // Add with QoS 0
-    instance.addSubscriptions(client, [sub], function (err, reClient) {
-      t.equal(reClient, client, 'client must be the same')
-      t.error(err, 'no error')
-      instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+    var sub = { topic: topic }
+    var subByTopic = { clientId: client.id, topic: topic }
+
+    function check (qos, cb) {
+      sub.qos = subByTopic.qos = qos
+      instance.addSubscriptions(client, [sub], function (err, reClient) {
+        t.equal(reClient, client, 'client must be the same')
         t.error(err, 'no error')
-        t.deepEqual(subsForClient, [sub])
-        instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+        instance.subscriptionsByClient(client, function (err, subsForClient, client) {
           t.error(err, 'no error')
-          t.deepEqual(subsForTopic, [])
-          // Replace with QoS 1
-          sub.qos = subByTopic.qos = 1
-          instance.addSubscriptions(client, [sub], function (err, reClient) {
-            t.equal(reClient, client, 'client must be the same')
+          t.deepEqual(subsForClient, [sub])
+          instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
             t.error(err, 'no error')
-            instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+            t.deepEqual(subsForTopic, qos === 0 ? [] : [subByTopic])
+            instance.countOffline(function (err, subsCount, clientsCount) {
               t.error(err, 'no error')
-              t.deepEqual(subsForClient, [sub])
-              instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
-                t.error(err, 'no error')
-                t.deepEqual(subsForTopic, [subByTopic])
-                // Replace with QoS 2
-                sub.qos = subByTopic.qos = 2
-                instance.addSubscriptions(client, [sub], function (err, reClient) {
-                  t.equal(reClient, client, 'client must be the same')
-                  t.error(err, 'no error')
-                  instance.subscriptionsByClient(client, function (err, subsForClient, client) {
-                    t.error(err, 'no error')
-                    t.deepEqual(subsForClient, [sub])
-                    instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
-                      t.error(err, 'no error')
-                      t.deepEqual(subsForTopic, [subByTopic])
-                      instance.countOffline(function (err, subsCount, clientsCount) {
-                        t.error(err, 'no error')
-                        t.equal(subsCount, 1, 'one subscription added')
-                        t.equal(clientsCount, 1, 'one client added')
-                        // Back to QoS 1
-                        sub.qos = subByTopic.qos = 1
-                        instance.addSubscriptions(client, [sub], function (err, reClient) {
-                          t.equal(reClient, client, 'client must be the same')
-                          t.error(err, 'no error')
-                          instance.subscriptionsByClient(client, function (err, subsForClient, client) {
-                            t.error(err, 'no error')
-                            t.deepEqual(subsForClient, [sub])
-                            instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
-                              t.error(err, 'no error')
-                              t.deepEqual(subsForTopic, [subByTopic])
-                              // Back to QoS 0
-                              sub.qos = subByTopic.qos = 0
-                              instance.addSubscriptions(client, [sub], function (err, reClient) {
-                                t.equal(reClient, client, 'client must be the same')
-                                t.error(err, 'no error')
-                                instance.subscriptionsByClient(client, function (err, subsForClient, client) {
-                                  t.error(err, 'no error')
-                                  t.deepEqual(subsForClient, [sub])
-                                  instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
-                                    t.error(err, 'no error')
-                                    t.deepEqual(subsForTopic, [])
-                                    instance.countOffline(function (err, subsCount, clientsCount) {
-                                      t.error(err, 'no error')
-                                      t.equal(subsCount, 0, 'no subscriptions added')
-                                      t.equal(clientsCount, 1, 'one client added')
-                                      instance.destroy(t.end.bind(t))
-                                    })
-                                  })
-                                })
-                              })
-                            })
-                          })
-                        })
-                      })
-                    })
-                  })
-                })
-              })
+              if (qos === 0) {
+                t.equal(subsCount, 0, 'no subscriptions added')
+              } else {
+                t.equal(subsCount, 1, 'one subscription added')
+              }
+              t.equal(clientsCount, 1, 'one client added')
+              cb()
+            })
+          })
+        })
+      })
+    }
+
+    check(0, function () {
+      check(1, function () {
+        check(2, function () {
+          check(1, function () {
+            check(0, function () {
+              instance.destroy(t.end.bind(t))
             })
           })
         })
