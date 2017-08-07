@@ -554,6 +554,36 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('replace subscriptions in same call', function (t, instance) {
+    var client = { id: 'abcde' }
+    var topic = 'hello'
+    var subs = [
+      { topic: topic, qos: 0 },
+      { topic: topic, qos: 1 },
+      { topic: topic, qos: 2 },
+      { topic: topic, qos: 1 },
+      { topic: topic, qos: 0 }
+    ]
+    instance.addSubscriptions(client, subs, function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+      instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+        t.error(err, 'no error')
+        t.deepEqual(subsForClient, [{ topic: topic, qos: 0 }])
+        instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, [])
+          instance.countOffline(function (err, subsCount, clientsCount) {
+            t.error(err, 'no error')
+            t.equal(subsCount, 0, 'no subscriptions added')
+            t.equal(clientsCount, 1, 'one client added')
+            instance.destroy(t.end.bind(t))
+          })
+        })
+      })
+    })
+  })
+
   testInstance('store and count subscriptions', function (t, instance) {
     var client = { id: 'abcde' }
     var subs = [{
