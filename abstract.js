@@ -39,8 +39,10 @@ function abstractPersistence (opts) {
           // We have to listen to 'ready' before setting broker because that
           // can result in 'ready' being emitted.
           instance.on('ready', function () {
+            instance.removeListener('error', cb)
             cb(null, instance)
           })
+          instance.on('error', cb)
         }
         instance.broker = broker
         if (waitForReady) {
