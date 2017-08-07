@@ -1,7 +1,7 @@
 'use strict'
 
 var from2 = require('from2')
-var QlobberSub = require('./qlobber-sub')
+var QlobberSub = require('qlobber/aedes/qlobber-sub')
 var QlobberTrue = require('qlobber').QlobberTrue
 var Packet = require('aedes-packet')
 var QlobberOpts = {
