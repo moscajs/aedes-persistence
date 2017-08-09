@@ -662,9 +662,6 @@ function abstractPersistence (opts) {
     })
   })
 
-  // count subs with multiple clients
-  // check when remove one client, still subbed to other one
-
   testInstance('add duplicate subs to persistence for qos > 0', function (t, instance) {
     var client = { id: 'abcde' }
     var topic = 'hello'
