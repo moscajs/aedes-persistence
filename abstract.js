@@ -604,6 +604,67 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('count subscriptions with two clients', function (t, instance) {
+    var client1 = { id: 'abcde' }
+    var client2 = { id: 'fghij' }
+    var subs = [{
+      topic: 'hello',
+      qos: 1
+    }, {
+      topic: 'matteo',
+      qos: 1
+    }, {
+      topic: 'noqos',
+      qos: 0
+    }]
+
+    function remove (client, subs, expectedSubs, expectedClients, cb) {
+      instance.removeSubscriptions(client, subs, function (err, reClient) {
+        t.error(err, 'no error')
+        t.equal(reClient, client, 'client must be the same')
+
+        instance.countOffline(function (err, subsCount, clientsCount) {
+          t.error(err, 'no error')
+          t.equal(subsCount, expectedSubs, 'subscriptions added')
+          t.equal(clientsCount, expectedClients, 'clients added')
+
+          cb()
+        })
+      })
+    }
+
+    instance.addSubscriptions(client1, subs, function (err, reClient) {
+      t.equal(reClient, client1, 'client must be the same')
+      t.error(err, 'no error')
+
+      instance.addSubscriptions(client2, subs, function (err, reClient) {
+        t.equal(reClient, client2, 'client must be the same')
+        t.error(err, 'no error')
+
+        remove(client1, ['foobar'], 4, 2, function () {
+          remove(client1, ['hello'], 3, 2, function () {
+            remove(client1, ['hello'], 3, 2, function () {
+              remove(client1, ['matteo'], 2, 2, function () {
+                remove(client1, ['noqos'], 2, 1, function () {
+                  remove(client2, ['hello'], 1, 1, function () {
+                    remove(client2, ['matteo'], 0, 1, function () {
+                      remove(client2, ['noqos'], 0, 0, function () {
+                        instance.destroy(t.end.bind(t))
+                      })
+                    })
+                  })
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+
+  // count subs with multiple clients
+  // check when remove one client, still subbed to other one
+
   testInstance('add duplicate subs to persistence for qos > 0', function (t, instance) {
     var client = { id: 'abcde' }
     var topic = 'hello'
