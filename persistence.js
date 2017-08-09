@@ -43,8 +43,8 @@ function matchingStream (current, pattern) {
   var matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
-    for (var p of pattern) {
-      matcher.add(p)
+    for (var i = 0; i < pattern.length; i += 1) {
+      matcher.add(pattern[i])
     }
   } else {
     matcher.add(pattern)
@@ -82,7 +82,8 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
     this._clientsCount++
   }
 
-  for (var sub of subs) {
+  for (var i = 0; i < subs.length; i += 1) {
+    var sub = subs[i]
     var qos = stored.get(sub.topic)
     var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
     if (sub.qos > 0) {
@@ -112,7 +113,8 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
   var trie = this._trie
 
   if (stored) {
-    for (var topic of subs) {
+    for (var i = 0; i < subs.length; i += 1) {
+      var topic = subs[i]
       var qos = stored.get(topic)
       if (qos !== undefined) {
         if (qos > 0) {
