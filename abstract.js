@@ -8,6 +8,7 @@ var Buffer = require('safe-buffer').Buffer
 function abstractPersistence (opts) {
   var test = opts.test
   var _persistence = opts.persistence
+  var waitForReady = opts.waitForReady
 
   // requiring it here so it will not error for modules
   // not using the default emitter
@@ -31,7 +32,23 @@ function abstractPersistence (opts) {
 
     _persistence(function (err, instance) {
       if (instance) {
+        // Wait for ready event, if applicable, to ensure the persistence isn't
+        // destroyed while it's still being set up.
+        // https://github.com/mcollina/aedes-persistence-redis/issues/41
+        if (waitForReady) {
+          // We have to listen to 'ready' before setting broker because that
+          // can result in 'ready' being emitted.
+          instance.on('ready', function () {
+            instance.removeListener('error', cb)
+            cb(null, instance)
+          })
+          instance.on('error', cb)
+        }
         instance.broker = broker
+        if (waitForReady) {
+          // 'ready' event will call back.
+          return
+        }
       }
       cb(err, instance)
     })
@@ -365,7 +382,14 @@ function abstractPersistence (opts) {
           instance.subscriptionsByClient(client, function (err, resubs) {
             t.error(err)
             t.deepEqual(resubs, null, 'no subscriptions')
-            instance.destroy(t.end.bind(t))
+
+            instance.countOffline(function (err, subsCount, clientsCount) {
+              t.error(err, 'no error')
+              t.equal(subsCount, 0, 'no subscriptions added')
+              t.equal(clientsCount, 0, 'no clients added')
+
+              instance.destroy(t.end.bind(t))
+            })
           })
         })
       })
@@ -384,7 +408,130 @@ function abstractPersistence (opts) {
         instance.subscriptionsByClient(client, function (err, resubs) {
           t.error(err)
           t.deepEqual(resubs, null, 'no subscriptions')
-          instance.destroy(t.end.bind(t))
+
+          instance.countOffline(function (err, subsCount, clientsCount) {
+            t.error(err, 'no error')
+            t.equal(subsCount, 0, 'no subscriptions added')
+            t.equal(clientsCount, 0, 'no clients added')
+
+            instance.destroy(t.end.bind(t))
+          })
+        })
+      })
+    })
+  })
+
+  testInstance('same topic, different QoS', function (t, instance) {
+    var client = { id: 'abcde' }
+    var subs = [{
+      topic: 'hello',
+      qos: 0
+    }, {
+      topic: 'hello',
+      qos: 1
+    }]
+
+    instance.addSubscriptions(client, subs, function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+
+      instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+        t.error(err, 'no error')
+        t.deepEqual(subsForClient, [{
+          topic: 'hello',
+          qos: 1
+        }])
+
+        instance.subscriptionsByTopic('hello', function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, [{
+            clientId: 'abcde',
+            topic: 'hello',
+            qos: 1
+          }])
+
+          instance.countOffline(function (err, subsCount, clientsCount) {
+            t.error(err, 'no error')
+            t.equal(subsCount, 1, 'one subscription added')
+            t.equal(clientsCount, 1, 'one client added')
+
+            instance.destroy(t.end.bind(t))
+          })
+        })
+      })
+    })
+  })
+
+  testInstance('replace subscriptions', function (t, instance) {
+    var client = { id: 'abcde' }
+    var topic = 'hello'
+    var sub = { topic: topic }
+    var subByTopic = { clientId: client.id, topic: topic }
+
+    function check (qos, cb) {
+      sub.qos = subByTopic.qos = qos
+      instance.addSubscriptions(client, [sub], function (err, reClient) {
+        t.equal(reClient, client, 'client must be the same')
+        t.error(err, 'no error')
+        instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForClient, [sub])
+          instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+            t.error(err, 'no error')
+            t.deepEqual(subsForTopic, qos === 0 ? [] : [subByTopic])
+            instance.countOffline(function (err, subsCount, clientsCount) {
+              t.error(err, 'no error')
+              if (qos === 0) {
+                t.equal(subsCount, 0, 'no subscriptions added')
+              } else {
+                t.equal(subsCount, 1, 'one subscription added')
+              }
+              t.equal(clientsCount, 1, 'one client added')
+              cb()
+            })
+          })
+        })
+      })
+    }
+
+    check(0, function () {
+      check(1, function () {
+        check(2, function () {
+          check(1, function () {
+            check(0, function () {
+              instance.destroy(t.end.bind(t))
+            })
+          })
+        })
+      })
+    })
+  })
+
+  testInstance('replace subscriptions in same call', function (t, instance) {
+    var client = { id: 'abcde' }
+    var topic = 'hello'
+    var subs = [
+      { topic: topic, qos: 0 },
+      { topic: topic, qos: 1 },
+      { topic: topic, qos: 2 },
+      { topic: topic, qos: 1 },
+      { topic: topic, qos: 0 }
+    ]
+    instance.addSubscriptions(client, subs, function (err, reClient) {
+      t.equal(reClient, client, 'client must be the same')
+      t.error(err, 'no error')
+      instance.subscriptionsByClient(client, function (err, subsForClient, client) {
+        t.error(err, 'no error')
+        t.deepEqual(subsForClient, [{ topic: topic, qos: 0 }])
+        instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
+          t.error(err, 'no error')
+          t.deepEqual(subsForTopic, [])
+          instance.countOffline(function (err, subsCount, clientsCount) {
+            t.error(err, 'no error')
+            t.equal(subsCount, 0, 'no subscriptions added')
+            t.equal(clientsCount, 1, 'one client added')
+            instance.destroy(t.end.bind(t))
+          })
         })
       })
     })
@@ -417,17 +564,105 @@ function abstractPersistence (opts) {
 
           instance.countOffline(function (err, subsCount, clientsCount) {
             t.error(err, 'no error')
-            t.equal(subsCount, 1, 'one subscriptions added')
+            t.equal(subsCount, 1, 'one subscription added')
             t.equal(clientsCount, 1, 'one client added')
 
-            instance.destroy(t.end.bind(t))
+            instance.removeSubscriptions(client, ['matteo'], function (err, reClient) {
+              t.error(err, 'no error')
+
+              instance.countOffline(function (err, subsCount, clientsCount) {
+                t.error(err, 'no error')
+                t.equal(subsCount, 0, 'zero subscriptions added')
+                t.equal(clientsCount, 1, 'one client added')
+
+                instance.removeSubscriptions(client, ['noqos'], function (err, reClient) {
+                  t.error(err, 'no error')
+
+                  instance.countOffline(function (err, subsCount, clientsCount) {
+                    t.error(err, 'no error')
+                    t.equal(subsCount, 0, 'zero subscriptions added')
+                    t.equal(clientsCount, 0, 'zero clients added')
+
+                    instance.removeSubscriptions(client, ['noqos'], function (err, reClient) {
+                      t.error(err, 'no error')
+
+                      instance.countOffline(function (err, subsCount, clientsCount) {
+                        t.error(err, 'no error')
+                        t.equal(subsCount, 0, 'zero subscriptions added')
+                        t.equal(clientsCount, 0, 'zero clients added')
+
+                        instance.destroy(t.end.bind(t))
+                      })
+                    })
+                  })
+                })
+              })
+            })
           })
         })
       })
     })
   })
 
-  testInstance('add duplicate subs to qlobber for qos > 0', function (t, instance) {
+  testInstance('count subscriptions with two clients', function (t, instance) {
+    var client1 = { id: 'abcde' }
+    var client2 = { id: 'fghij' }
+    var subs = [{
+      topic: 'hello',
+      qos: 1
+    }, {
+      topic: 'matteo',
+      qos: 1
+    }, {
+      topic: 'noqos',
+      qos: 0
+    }]
+
+    function remove (client, subs, expectedSubs, expectedClients, cb) {
+      instance.removeSubscriptions(client, subs, function (err, reClient) {
+        t.error(err, 'no error')
+        t.equal(reClient, client, 'client must be the same')
+
+        instance.countOffline(function (err, subsCount, clientsCount) {
+          t.error(err, 'no error')
+          t.equal(subsCount, expectedSubs, 'subscriptions added')
+          t.equal(clientsCount, expectedClients, 'clients added')
+
+          cb()
+        })
+      })
+    }
+
+    instance.addSubscriptions(client1, subs, function (err, reClient) {
+      t.equal(reClient, client1, 'client must be the same')
+      t.error(err, 'no error')
+
+      instance.addSubscriptions(client2, subs, function (err, reClient) {
+        t.equal(reClient, client2, 'client must be the same')
+        t.error(err, 'no error')
+
+        remove(client1, ['foobar'], 4, 2, function () {
+          remove(client1, ['hello'], 3, 2, function () {
+            remove(client1, ['hello'], 3, 2, function () {
+              remove(client1, ['matteo'], 2, 2, function () {
+                remove(client1, ['noqos'], 2, 1, function () {
+                  remove(client2, ['hello'], 1, 1, function () {
+                    remove(client2, ['matteo'], 0, 1, function () {
+                      remove(client2, ['noqos'], 0, 0, function () {
+                        instance.destroy(t.end.bind(t))
+                      })
+                    })
+                  })
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+
+  testInstance('add duplicate subs to persistence for qos > 0', function (t, instance) {
     var client = { id: 'abcde' }
     var topic = 'hello'
     var subs = [{

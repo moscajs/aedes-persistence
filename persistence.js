@@ -1,7 +1,8 @@
 'use strict'
 
 var from2 = require('from2')
-var Qlobber = require('qlobber').Qlobber
+var QlobberSub = require('qlobber/aedes/qlobber-sub')
+var QlobberTrue = require('qlobber').QlobberTrue
 var Packet = require('aedes-packet')
 var QlobberOpts = {
   wildcard_one: '+',
@@ -15,10 +16,11 @@ function MemoryPersistence () {
   }
 
   this._retained = []
-  this._subscriptions = []
+  // clientId -> topic -> qos
+  this._subscriptions = new Map()
   this._subscriptionsCount = 0
   this._clientsCount = 0
-  this._trie = new Qlobber(QlobberOpts)
+  this._trie = new QlobberSub(QlobberOpts)
   this._outgoing = {}
   this._incoming = {}
   this._wills = {}
@@ -38,21 +40,21 @@ MemoryPersistence.prototype.storeRetained = function (packet, cb) {
 }
 
 function matchingStream (current, pattern) {
-  var matcher = new Qlobber(QlobberOpts)
+  var matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
-    pattern.map(function (p) {
-      matcher.add(p, true)
-    })
+    for (var i = 0; i < pattern.length; i += 1) {
+      matcher.add(pattern[i])
+    }
   } else {
-    matcher.add(pattern, true)
+    matcher.add(pattern)
   }
 
   return from2.obj(function match (size, next) {
     var entry
 
     while ((entry = current.shift()) != null) {
-      if (matcher.match(entry.topic).length > 0) {
+      if (matcher.test(entry.topic)) {
         setImmediate(next, null, entry)
         return
       }
@@ -70,87 +72,76 @@ MemoryPersistence.prototype.createRetainedStreamCombi = function (patterns) {
   return matchingStream([].concat(this._retained), patterns)
 }
 
-function checkIfSubAdded (sub, addedSubs) {
-  for (var i = 0; i < addedSubs.length; i++) {
-    if (sub.topic === addedSubs[i].topic && sub.clientId === addedSubs[i].clientId) {
-      return true
-    }
-  }
-  return false
-}
-
 MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
-  var that = this
-  var stored = this._subscriptions[client.id]
+  var stored = this._subscriptions.get(client.id)
   var trie = this._trie
 
   if (!stored) {
-    stored = []
-    this._subscriptions[client.id] = stored
+    stored = new Map()
+    this._subscriptions.set(client.id, stored)
     this._clientsCount++
   }
 
-  subs.map(function mapSub (sub) {
-    return {
-      clientId: client.id,
-      topic: sub.topic,
-      qos: sub.qos
-    }
-  }).forEach(function eachSub (sub) {
+  for (var i = 0; i < subs.length; i += 1) {
+    var sub = subs[i]
+    var qos = stored.get(sub.topic)
+    var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
     if (sub.qos > 0) {
-      if (!checkIfSubAdded(sub, trie.match(sub.topic))) {
-        that._subscriptionsCount++
-        trie.add(sub.topic, sub)
-        stored.push(sub)
+      if (!hasQoSGreaterThanZero) {
+        this._subscriptionsCount++
       }
-    } else {
-      if (!checkIfSubAdded(sub, that._subscriptions[client.id])) {
-        stored.push(sub)
-      }
+      trie.add(sub.topic, {
+        clientId: client.id,
+        topic: sub.topic,
+        qos: sub.qos
+      })
+    } else if (hasQoSGreaterThanZero) {
+      trie.remove(sub.topic, {
+        clientId: client.id,
+        topic: sub.topic
+      })
+      this._subscriptionsCount--
     }
-  })
+    stored.set(sub.topic, sub.qos)
+  }
 
   cb(null, client)
 }
 
 MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
-  var that = this
-  var stored = this._subscriptions[client.id]
+  var stored = this._subscriptions.get(client.id)
   var trie = this._trie
 
-  if (!stored) {
-    stored = []
-    this._subscriptions[client.id] = stored
-  }
-
-  this._subscriptions[client.id] = stored.filter(function noSub (storedSub) {
-    var toKeep = subs.indexOf(storedSub.topic) < 0
-    if (!toKeep) {
-      that._subscriptionsCount--
-      trie.remove(storedSub.topic, storedSub)
+  if (stored) {
+    for (var i = 0; i < subs.length; i += 1) {
+      var topic = subs[i]
+      var qos = stored.get(topic)
+      if (qos !== undefined) {
+        if (qos > 0) {
+          this._subscriptionsCount--
+          trie.remove(topic, { clientId: client.id, topic: topic })
+        }
+        stored.delete(topic)
+      }
     }
-    return toKeep
-  })
 
-  if (this._subscriptions[client.id].length === 0) {
-    this._clientsCount--
-    delete this._subscriptions[client.id]
+    if (stored.size === 0) {
+      this._clientsCount--
+      this._subscriptions.delete(client.id)
+    }
   }
 
   cb(null, client)
 }
 
-function toSubObj (sub) {
-  return {
-    topic: sub.topic,
-    qos: sub.qos
-  }
-}
-
 MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
-  var subs = this._subscriptions[client.id] || null
-  if (subs) {
-    subs = subs.map(toSubObj)
+  var subs = null
+  var stored = this._subscriptions.get(client.id)
+  if (stored) {
+    subs = []
+    for (var topicAndQos of stored) {
+      subs.push({ topic: topicAndQos[0], qos: topicAndQos[1] })
+    }
   }
   cb(null, subs, client)
 }
@@ -165,14 +156,19 @@ MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
 
 MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
   var trie = this._trie
+  var stored = this._subscriptions.get(client.id)
 
-  if (this._subscriptions[client.id]) {
-    this._subscriptions[client.id].forEach(function removeTrie (sub) {
-      trie.remove(sub.topic, sub)
-    })
+  if (stored) {
+    for (var topicAndQos of stored) {
+      if (topicAndQos[1] > 0) {
+        this._subscriptionsCount--
+        var topic = topicAndQos[0]
+        trie.remove(topic, { clientId: client.id, topic: topic })
+      }
+    }
 
     this._clientsCount--
-    delete this._subscriptions[client.id]
+    this._subscriptions.delete(client.id)
   }
 
   cb(null, client)
@@ -336,23 +332,16 @@ MemoryPersistence.prototype.streamWill = function (brokers) {
 
 MemoryPersistence.prototype.getClientList = function (topic) {
   var clientSubs = this._subscriptions
-  var keys = Object.keys(clientSubs)
+  var entries = clientSubs.entries(clientSubs)
   return from2.obj(function match (size, next) {
-    var clientKey
-    while ((clientKey = keys.shift()) != null) {
-      var subs = clientSubs[clientKey]
-      var current = 0
-      while (current < subs.length) {
-        if (subs[current].topic === topic) {
-          setImmediate(next, null, subs[current].clientId)
-          current++
-          return
-        }
+    var entry
+    while (!(entry = entries.next()).done) {
+      if (entry.value[1].has(topic)) {
+        setImmediate(next, null, entry.value[0])
+        return
       }
     }
-    if (!clientKey) {
-      next(null, null)
-    }
+    next(null, null)
   })
 }
 
