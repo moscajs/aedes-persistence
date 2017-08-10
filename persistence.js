@@ -18,7 +18,6 @@ function MemoryPersistence () {
   this._retained = []
   // clientId -> topic -> qos
   this._subscriptions = new Map()
-  this._subscriptionsCount = 0
   this._clientsCount = 0
   this._trie = new QlobberSub(QlobberOpts)
   this._outgoing = {}
@@ -87,9 +86,6 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
     var qos = stored.get(sub.topic)
     var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
     if (sub.qos > 0) {
-      if (!hasQoSGreaterThanZero) {
-        this._subscriptionsCount++
-      }
       trie.add(sub.topic, {
         clientId: client.id,
         topic: sub.topic,
@@ -100,7 +96,6 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
         clientId: client.id,
         topic: sub.topic
       })
-      this._subscriptionsCount--
     }
     stored.set(sub.topic, sub.qos)
   }
@@ -118,7 +113,6 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
       var qos = stored.get(topic)
       if (qos !== undefined) {
         if (qos > 0) {
-          this._subscriptionsCount--
           trie.remove(topic, { clientId: client.id, topic: topic })
         }
         stored.delete(topic)
@@ -147,7 +141,7 @@ MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
 }
 
 MemoryPersistence.prototype.countOffline = function (cb) {
-  return cb(null, this._subscriptionsCount, this._clientsCount)
+  return cb(null, this._trie.sub_count, this._clientsCount)
 }
 
 MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
@@ -161,7 +155,6 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
   if (stored) {
     for (var topicAndQos of stored) {
       if (topicAndQos[1] > 0) {
-        this._subscriptionsCount--
         var topic = topicAndQos[0]
         trie.remove(topic, { clientId: client.id, topic: topic })
       }
