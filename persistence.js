@@ -141,7 +141,7 @@ MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
 }
 
 MemoryPersistence.prototype.countOffline = function (cb) {
-  return cb(null, this._trie.sub_count, this._clientsCount)
+  return cb(null, this._trie.subscriptionsCount, this._clientsCount)
 }
 
 MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
