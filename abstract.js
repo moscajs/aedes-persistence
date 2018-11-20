@@ -711,6 +711,38 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('get topic list after concurrent subscriptions of a client', function (t, instance) {
+    var client = { id: 'abcde' }
+    var subs1 = [{
+      topic: 'hello1',
+      qos: 1
+    }]
+    var subs2 = [{
+      topic: 'hello2',
+      qos: 1
+    }]
+    var calls = 2
+
+    function done () {
+      if (!--calls) {
+        instance.subscriptionsByClient(client, function (err, resubs) {
+          t.notOk(err, 'no error')
+          t.deepEqual(resubs, [subs1[0], subs2[0]])
+          instance.destroy(t.end.bind(t))
+        })
+      }
+    }
+
+    instance.addSubscriptions(client, subs1, function (err) {
+      t.notOk(err, 'no error for hello1')
+      done()
+    })
+    instance.addSubscriptions(client, subs2, function (err) {
+      t.notOk(err, 'no error for hello2')
+      done()
+    })
+  })
+
   testInstance('add outgoing packet and stream it', function (t, instance) {
     var sub = {
       clientId: 'abcde',
