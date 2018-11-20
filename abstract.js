@@ -3,7 +3,6 @@
 var concat = require('concat-stream')
 var through = require('through2')
 var Packet = require('aedes-packet')
-var Buffer = require('safe-buffer').Buffer
 
 function abstractPersistence (opts) {
   var test = opts.test
@@ -121,7 +120,7 @@ function abstractPersistence (opts) {
     storeRetained(instance, {}, function (err, packet) {
       t.notOk(err, 'no error')
       storeRetained(instance, {
-        payload: new Buffer(0)
+        payload: Buffer.alloc(0)
       }, function (err) {
         t.notOk(err, 'no error')
 
@@ -274,7 +273,7 @@ function abstractPersistence (opts) {
       instance.addSubscriptions(client2, subs, function (err) {
         t.notOk(err, 'no error for client 2')
         var stream = instance.getClientList(subs[0].topic)
-        stream.pipe(concat({encoding: 'object'}, function (out) {
+        stream.pipe(concat({ encoding: 'object' }, function (out) {
           t.deepEqual(out, [client1.id, client2.id])
           instance.destroy(t.end.bind(t))
         }))
@@ -297,7 +296,7 @@ function abstractPersistence (opts) {
         instance.removeSubscriptions(client2, [subs[0].topic], function (err, reClient) {
           t.notOk(err, 'no error for removeSubscriptions')
           var stream = instance.getClientList(subs[0].topic)
-          stream.pipe(concat({encoding: 'object'}, function (out) {
+          stream.pipe(concat({ encoding: 'object' }, function (out) {
             t.deepEqual(out, [client1.id])
             instance.destroy(t.end.bind(t))
           }))
@@ -1220,22 +1219,22 @@ function abstractPersistence (opts) {
         instance.streamWill({
           'anotherBroker': Date.now()
         })
-        .pipe(through.obj(function (chunk, enc, cb) {
-          t.deepEqual(chunk, {
-            clientId: client.id,
-            brokerId: originalId,
-            topic: 'hello/died42',
-            payload: Buffer.from('muahahha'),
-            qos: 0,
-            retain: true
-          }, 'packet matches')
-          cb()
-          client.brokerId = chunk.brokerId
-          instance.delWill(client, function (err, result, client) {
-            t.error(err, 'no error')
-            instance.destroy(t.end.bind(t))
-          })
-        }))
+          .pipe(through.obj(function (chunk, enc, cb) {
+            t.deepEqual(chunk, {
+              clientId: client.id,
+              brokerId: originalId,
+              topic: 'hello/died42',
+              payload: Buffer.from('muahahha'),
+              qos: 0,
+              retain: true
+            }, 'packet matches')
+            cb()
+            client.brokerId = chunk.brokerId
+            instance.delWill(client, function (err, result, client) {
+              t.error(err, 'no error')
+              instance.destroy(t.end.bind(t))
+            })
+          }))
       })
     })
   })
