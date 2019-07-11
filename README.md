@@ -120,7 +120,7 @@ a client with `clean: false` connects to restore its subscriptions.
 
 -------------------------------------------------------
 <a name="countOffline"></a>
-### instance.countOffline(cb(err, numOfSubscriptions, numOfClients)
+### instance.countOffline(cb(err, numOfSubscriptions, numOfClients))
 
 Returns the number of offline subscriptions and the number of offline
 clients.
