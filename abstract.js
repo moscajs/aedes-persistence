@@ -910,7 +910,7 @@ function abstractPersistence (opts) {
       retain: false,
       brokerId: instance.broker.id,
       brokerCounter: 42,
-      messageId: 0
+      messageId: 4242
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {

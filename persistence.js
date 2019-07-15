@@ -184,8 +184,11 @@ function _outgoingEnqueue (sub, packet) {
   var queue = this._outgoing[id] || []
 
   this._outgoing[id] = queue
-
-  queue[queue.length] = new Packet(packet)
+  var p = new Packet(packet)
+  if (packet.messageId) {
+    p.messageId = packet.messageId
+  }
+  queue[queue.length] = p
 }
 
 MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
