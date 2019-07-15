@@ -1061,7 +1061,6 @@ function abstractPersistence (opts) {
 
     instance.outgoingEnqueue(sub, packet1, function () {
       instance.outgoingEnqueue(sub, packet2, function () {
-        console.log(instance._outgoing)
         instance.outgoingUpdate(client, packet1, function () {
           instance.outgoingUpdate(client, packet2, function () {
             var stream = instance.outgoingStream(client)
