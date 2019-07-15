@@ -940,7 +940,7 @@ function abstractPersistence (opts) {
       instance.outgoingUpdate(client, updated, function (err, reclient, repacket) {
         t.error(err)
         t.equal(reclient, client, 'client matches')
-        t.equal(repacket, repacket, 'packet matches')
+        t.equal(repacket, updated, 'packet matches')
         callback(updated)
       })
     })
@@ -1054,7 +1054,7 @@ function abstractPersistence (opts) {
       instance.outgoingUpdate(client, updated, function (err, reclient, repacket) {
         t.error(err)
         t.equal(reclient, client, 'client matches')
-        t.equal(repacket, repacket, 'packet matches')
+        t.equal(repacket, updated, 'packet matches')
 
         var pubrel = {
           cmd: 'pubrel',
@@ -1217,7 +1217,7 @@ function abstractPersistence (opts) {
         t.error(err, 'no error')
         t.equal(c, anotherClient, 'client matches')
         instance.streamWill({
-          'anotherBroker': Date.now()
+          anotherBroker: Date.now()
         })
           .pipe(through.obj(function (chunk, enc, cb) {
             t.deepEqual(chunk, {
