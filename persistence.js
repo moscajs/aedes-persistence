@@ -208,7 +208,7 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
     } else if (temp.messageId === packet.messageId) {
       if (packet.cmd !== 'publish') {
       // for non-PUBLISH packet only
-      outgoing[i] = packet
+        outgoing[i] = packet
       }
       return cb(null, client, packet)
     }
