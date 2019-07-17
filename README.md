@@ -1,4 +1,5 @@
-# aedes-persistence&nbsp;&nbsp;[![Build Status](https://travis-ci.org/mcollina/aedes-persistence.svg)](https://travis-ci.org/mcollina/aedes-persistence)
+# aedes-persistence
+[![Build Status](https://travis-ci.org/mcollina/aedes-persistence.svg?branch=master)](https://travis-ci.org/mcollina/aedes-persistence)&nbsp;[![Known Vulnerabilities](https://snyk.io/test/github/mcollina/aedes-persistence/badge.svg)](https://snyk.io/test/github/mcollina/aedes-persistence)&nbsp;[![Coverage Status](https://coveralls.io/repos/mcollina/aedes-persistence/badge.svg?branch=master&service=github)](https://coveralls.io/github/mcollina/aedes-persistence?branch=master)&nbsp;[![NPM version](https://img.shields.io/npm/v/aedes-persistence.svg?style=flat)](https://www.npmjs.com/package/aedes-persistence)&nbsp;[![NPM downloads](https://img.shields.io/npm/dm/aedes-persistence.svg?style=flat)](https://www.npmjs.com/package/aedes-persistence)
 
 The spec for an [Aedes](http://npm.im/aedes) persistence, with abstract
 tests and a fast in-memory implementation.
@@ -240,7 +241,7 @@ format:
 <a name="getCLientList"></a>
 ### instance.getClientList(topic)
 
-Returns a stream which has all the clientIds subscribed to the 
+Returns a stream which has all the clientIds subscribed to the
 specified topic
 
 <a name="implement"></a>
