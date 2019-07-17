@@ -185,9 +185,6 @@ function _outgoingEnqueue (sub, packet) {
 
   this._outgoing[id] = queue
   var p = new Packet(packet)
-  if (packet.messageId) {
-    p.messageId = packet.messageId
-  }
   queue[queue.length] = p
 }
 
