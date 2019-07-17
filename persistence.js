@@ -205,9 +205,11 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
       temp.brokerCounter === packet.brokerCounter) {
       temp.messageId = packet.messageId
       return cb(null, client, packet)
-    } else if (packet.cmd !== 'publish' && temp.messageId === packet.messageId) {
+    } else if (temp.messageId === packet.messageId) {
+      if (packet.cmd !== 'publish') {
       // for non-PUBLISH packet only
       outgoing[i] = packet
+      }
       return cb(null, client, packet)
     }
   }
