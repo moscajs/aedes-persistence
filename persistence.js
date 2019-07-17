@@ -184,8 +184,11 @@ function _outgoingEnqueue (sub, packet) {
   var queue = this._outgoing[id] || []
 
   this._outgoing[id] = queue
-
-  queue[queue.length] = new Packet(packet)
+  var p = new Packet(packet)
+  if (packet.messageId) {
+    p.messageId = packet.messageId
+  }
+  queue[queue.length] = p
 }
 
 MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
@@ -202,7 +205,8 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
       temp.brokerCounter === packet.brokerCounter) {
       temp.messageId = packet.messageId
       return cb(null, client, packet)
-    } else if (temp.messageId === packet.messageId) {
+    } else if (packet.cmd !== 'publish' && temp.messageId === packet.messageId) {
+      // for non-PUBLISH packet only
       outgoing[i] = packet
       return cb(null, client, packet)
     }

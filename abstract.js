@@ -770,7 +770,7 @@ function abstractPersistence (opts) {
       retain: false,
       brokerId: instance.broker.id,
       brokerCounter: 42,
-      messageId: 0
+      messageId: 1
     }
 
     instance.outgoingEnqueue(sub, packet, function (err) {
@@ -821,7 +821,7 @@ function abstractPersistence (opts) {
       retain: false,
       brokerId: instance.broker.id,
       brokerCounter: 42,
-      messageId: 0
+      messageId: 1
     }
 
     instance.outgoingEnqueueCombi(subs, packet, function (err) {
@@ -867,7 +867,7 @@ function abstractPersistence (opts) {
       retain: false,
       brokerId: instance.broker.id,
       brokerCounter: 42,
-      messageId: 0
+      messageId: 1
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
@@ -910,7 +910,7 @@ function abstractPersistence (opts) {
       retain: false,
       brokerId: instance.broker.id,
       brokerCounter: 42,
-      messageId: 0
+      messageId: 4242
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
@@ -1022,6 +1022,55 @@ function abstractPersistence (opts) {
             t.deepEqual(list, [updated2], 'must return the packet')
             instance.destroy(t.end.bind(t))
           }))
+        })
+      })
+    })
+  })
+
+  testInstance('update to publish w/ same messageId', function (t, instance) {
+    var sub = {
+      clientId: 'abcde', topic: 'hello', qos: 1
+    }
+    var client = {
+      id: sub.clientId
+    }
+    var packet1 = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 2,
+      dup: false,
+      length: 14,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 42,
+      messageId: 42
+    }
+    var packet2 = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 2,
+      dup: false,
+      length: 14,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 50,
+      messageId: 42
+    }
+
+    instance.outgoingEnqueue(sub, packet1, function () {
+      instance.outgoingEnqueue(sub, packet2, function () {
+        instance.outgoingUpdate(client, packet1, function () {
+          instance.outgoingUpdate(client, packet2, function () {
+            var stream = instance.outgoingStream(client)
+            stream.pipe(concat(function (list) {
+              t.equal(list.length, 2, 'must have two items in queue')
+              t.deepEqual(list[0].brokerCounter, packet1.brokerCounter, 'packet must match')
+              t.deepEqual(list[1].brokerCounter, packet2.brokerCounter, 'packet must match')
+              instance.destroy(t.end.bind(t))
+            }))
+          })
         })
       })
     })
