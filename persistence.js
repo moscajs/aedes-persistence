@@ -201,15 +201,21 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
 
   for (i = 0; i < outgoing.length; i++) {
     temp = outgoing[i]
-    if (temp.brokerId === packet.brokerId &&
-      temp.brokerCounter === packet.brokerCounter) {
+    if (temp.brokerId === packet.brokerId) {
+      if (temp.brokerCounter === packet.brokerCounter) {
       temp.messageId = packet.messageId
       return cb(null, client, packet)
-    } else if (temp.messageId === packet.messageId) {
-      if (packet.cmd !== 'publish') {
-      // for non-PUBLISH packet only
-        outgoing[i] = packet
       }
+      /*
+      Maximum of messageId (packet identifier) is 65535 and will be rotated,
+      brokerCounter is to ensure the packet identifier be unique.
+      The for loop is going to search which packet messageId should be updated
+      in the _outgoing queue.
+      If there is a case that brokerCounter is different but messageId is same,
+      we need to let the loop keep searching
+      */
+    } else if (temp.messageId === packet.messageId) {
+        outgoing[i] = packet
       return cb(null, client, packet)
     }
   }
