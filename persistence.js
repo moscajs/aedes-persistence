@@ -203,8 +203,8 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
     temp = outgoing[i]
     if (temp.brokerId === packet.brokerId) {
       if (temp.brokerCounter === packet.brokerCounter) {
-      temp.messageId = packet.messageId
-      return cb(null, client, packet)
+        temp.messageId = packet.messageId
+        return cb(null, client, packet)
       }
       /*
       Maximum of messageId (packet identifier) is 65535 and will be rotated,
@@ -215,7 +215,7 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
       we need to let the loop keep searching
       */
     } else if (temp.messageId === packet.messageId) {
-        outgoing[i] = packet
+      outgoing[i] = packet
       return cb(null, client, packet)
     }
   }
