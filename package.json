@@ -28,6 +28,7 @@
     "faucet": "0.0.1",
     "mqemitter": "^3.0.0",
     "pre-commit": "^1.2.2",
+    "pump": "^3.0.0",
     "standard": "^13.0.2",
     "tape": "^4.11.0",
     "through2": "^3.0.1"

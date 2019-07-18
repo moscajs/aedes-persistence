@@ -1,6 +1,7 @@
 'use strict'
 
 var concat = require('concat-stream')
+var pump = require('pump')
 var through = require('through2')
 var Packet = require('aedes-packet')
 
@@ -836,6 +837,55 @@ function abstractPersistence (opts) {
           instance.destroy(t.end.bind(t))
         }))
       }))
+    })
+  })
+
+  testInstance('add outgoing packet as a string and pump', function (t, instance) {
+    var sub = {
+      clientId: 'abcde',
+      topic: 'hello',
+      qos: 1
+    }
+    var client = {
+      id: sub.clientId
+    }
+    var packet1 = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 1,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 10
+    }
+    var packet2 = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('matteo'),
+      qos: 1,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 50
+    }
+    var queue = []
+    enqueueAndUpdate(t, instance, client, sub, packet1, 42, function (updated1) {
+      enqueueAndUpdate(t, instance, client, sub, packet2, 42, function (updated2) {
+        var stream = instance.outgoingStream(client)
+        pump(stream, through.obj(function clearQueue (data, enc, next) {
+          instance.outgoingUpdate(client, data,
+            function (_, client, packet) {
+              queue.push(packet)
+            })
+          next()
+        }), function done () {
+          t.equal(queue.length, 2)
+          if (queue.length === 2) {
+            t.deepEqual(queue[0], updated1)
+            t.deepEqual(queue[1], updated2)
+          }
+          t.end()
+        })
+      })
     })
   })
 
