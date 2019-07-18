@@ -1116,8 +1116,10 @@ function abstractPersistence (opts) {
             var stream = instance.outgoingStream(client)
             stream.pipe(concat(function (list) {
               t.equal(list.length, 2, 'must have two items in queue')
-              t.deepEqual(list[0].brokerCounter, packet1.brokerCounter, 'packet must match')
-              t.deepEqual(list[1].brokerCounter, packet2.brokerCounter, 'packet must match')
+              t.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
+              t.equal(list[0].messageId, packet1.messageId, 'messageId must match')
+              t.equal(list[1].brokerCounter, packet2.brokerCounter, 'brokerCounter must match')
+              t.equal(list[1].messageId, packet2.messageId, 'messageId must match')
               instance.destroy(t.end.bind(t))
             }))
           })
