@@ -1,6 +1,7 @@
 'use strict'
 
 var concat = require('concat-stream')
+var pump = require('pump')
 var through = require('through2')
 var Packet = require('aedes-packet')
 
@@ -839,6 +840,55 @@ function abstractPersistence (opts) {
     })
   })
 
+  testInstance('add outgoing packet as a string and pump', function (t, instance) {
+    var sub = {
+      clientId: 'abcde',
+      topic: 'hello',
+      qos: 1
+    }
+    var client = {
+      id: sub.clientId
+    }
+    var packet1 = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 1,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 10
+    }
+    var packet2 = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('matteo'),
+      qos: 1,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 50
+    }
+    var queue = []
+    enqueueAndUpdate(t, instance, client, sub, packet1, 42, function (updated1) {
+      enqueueAndUpdate(t, instance, client, sub, packet2, 42, function (updated2) {
+        var stream = instance.outgoingStream(client)
+        pump(stream, through.obj(function clearQueue (data, enc, next) {
+          instance.outgoingUpdate(client, data,
+            function (_, client, packet) {
+              queue.push(packet)
+            })
+          next()
+        }), function done () {
+          t.equal(queue.length, 2)
+          if (queue.length === 2) {
+            t.deepEqual(queue[0], updated1)
+            t.deepEqual(queue[1], updated2)
+          }
+          t.end()
+        })
+      })
+    })
+  })
+
   testInstance('add outgoing packet as a string and stream', function (t, instance) {
     var sub = {
       clientId: 'abcde',
@@ -1066,8 +1116,10 @@ function abstractPersistence (opts) {
             var stream = instance.outgoingStream(client)
             stream.pipe(concat(function (list) {
               t.equal(list.length, 2, 'must have two items in queue')
-              t.deepEqual(list[0].brokerCounter, packet1.brokerCounter, 'packet must match')
-              t.deepEqual(list[1].brokerCounter, packet2.brokerCounter, 'packet must match')
+              t.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
+              t.equal(list[0].messageId, packet1.messageId, 'messageId must match')
+              t.equal(list[1].brokerCounter, packet2.brokerCounter, 'brokerCounter must match')
+              t.equal(list[1].messageId, packet2.messageId, 'messageId must match')
               instance.destroy(t.end.bind(t))
             }))
           })
