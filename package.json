@@ -4,9 +4,15 @@
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
   "scripts": {
-    "test": "standard && tape test.js | faucet"
+    "lint": "standard --verbose | snazzy",
+    "test": "tape test.js | faucet",
+    "coverage": "nyc --reporter=lcov tape test.js",
+    "license-checker": "license-checker --production --onlyAllow='MIT;ISC;BSD-3-Clause;BSD-2-Clause'"
   },
-  "pre-commit": "test",
+  "pre-commit": [
+    "lint",
+    "test"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mcollina/aedes-persistence.git"
@@ -18,6 +24,12 @@
     "aedes"
   ],
   "author": "Matteo Collina <hello@matteocollina.com>",
+  "contributors": [
+    {
+      "name": "Gnought",
+      "url": "https://github.com/gnought"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/mcollina/aedes-persistence/issues"
@@ -26,15 +38,18 @@
   "devDependencies": {
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
+    "license-checker": "^25.0.1",
     "mqemitter": "^3.0.0",
+    "nyc": "^14.1.1",
     "pre-commit": "^1.2.2",
     "pump": "^3.0.0",
-    "standard": "^13.0.2",
+    "snazzy": "^8.0.0",
+    "standard": "^13.1.0",
     "tape": "^4.11.0",
     "through2": "^3.0.1"
   },
   "dependencies": {
-    "aedes-packet": "^2.0.0",
+    "aedes-packet": "^2.1.0",
     "from2": "^2.3.0",
     "qlobber": "^3.1.0"
   }
