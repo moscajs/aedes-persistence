@@ -281,6 +281,10 @@ abs({
 })
 ```
 
+## Collaborators
+
+* [__Gnought__](https://github.com/gnought)
+
 ## License
 
 MIT

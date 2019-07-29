@@ -18,6 +18,12 @@
     "aedes"
   ],
   "author": "Matteo Collina <hello@matteocollina.com>",
+  "contributors": [
+    {
+      "name": "Gnought",
+      "url": "https://github.com/gnought"
+    }
+  ],
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/mcollina/aedes-persistence/issues"
