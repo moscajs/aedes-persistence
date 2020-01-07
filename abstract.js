@@ -779,7 +779,6 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.ok(Object.prototype.hasOwnProperty.call(packet, 'messageId'))
         t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
         delete packet.messageId
         t.deepEqual(packet, expected, 'must return the packet')
@@ -832,7 +831,6 @@ function abstractPersistence (opts) {
       var stream = instance.outgoingStream(client)
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.ok(Object.prototype.hasOwnProperty.call(packet, 'messageId'))
         t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
         delete packet.messageId
         t.deepEqual(packet, expected, 'must return the packet')
@@ -840,7 +838,6 @@ function abstractPersistence (opts) {
         var stream2 = instance.outgoingStream(client2)
         stream2.pipe(concat(function (list) {
           var packet = list[0]
-          t.ok(Object.prototype.hasOwnProperty.call(packet, 'messageId'))
           t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
           delete packet.messageId
           t.deepEqual(packet, expected, 'must return the packet')
@@ -885,8 +882,8 @@ function abstractPersistence (opts) {
           instance.outgoingUpdate(client, data,
             function (_, client, packet) {
               queue.push(packet)
+              next()
             })
-          next()
         }), function done () {
           t.equal(queue.length, 2)
           if (queue.length === 2) {
@@ -935,7 +932,6 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.ok(Object.prototype.hasOwnProperty.call(packet, 'messageId'))
         t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
         delete packet.messageId
         t.deepEqual(packet, expected, 'must return the packet')
@@ -981,7 +977,6 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.ok(Object.prototype.hasOwnProperty.call(packet, 'messageId'))
         t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
         delete packet.messageId
         t.deepEqual(packet, expected, 'must return the packet')
