@@ -882,8 +882,8 @@ function abstractPersistence (opts) {
           instance.outgoingUpdate(client, data,
             function (_, client, packet) {
               queue.push(packet)
+              next()
             })
-          next()
         }), function done () {
           t.equal(queue.length, 2)
           if (queue.length === 2) {
