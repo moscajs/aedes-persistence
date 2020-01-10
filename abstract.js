@@ -60,6 +60,7 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       id: instance.broker.id,
+      brokerCounter: opts.counter,
       topic: opts.topic || 'hello/world',
       payload: opts.payload || Buffer.from('muahah'),
       qos: 0,
@@ -115,6 +116,22 @@ function abstractPersistence (opts) {
 
   test('look up retained messages with multiple patterns', function (t) {
     matchRetainedWithPattern(t, ['hello/+', 'other/hello'])
+  })
+
+  testInstance('store multiple retained messages in order', function (t, instance) {
+    t.plan(40)
+
+    function checkIndex (index) {
+      opts.counter = index
+      storeRetained(instance, opts, function (err, packet) {
+        t.notOk(err, 'no error')
+        t.equal(packet.brokerCounter, index, 'packet stored in order')
+      })
+    }
+
+    for (let i = 0; i < 20; i++) {
+      checkIndex(i)
+    }
   })
 
   testInstance('remove retained message', function (t, instance) {
