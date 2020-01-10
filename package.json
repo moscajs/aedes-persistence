@@ -1,6 +1,6 @@
 {
   "name": "aedes-persistence",
-  "version": "7.1.2",
+  "version": "7.2.0",
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
   "scripts": {
@@ -40,12 +40,12 @@
     "faucet": "0.0.1",
     "license-checker": "^25.0.1",
     "mqemitter": "^3.0.0",
-    "nyc": "^14.1.1",
+    "nyc": "^15.0.0",
     "pre-commit": "^1.2.2",
     "pump": "^3.0.0",
     "snazzy": "^8.0.0",
-    "standard": "^13.1.0",
-    "tape": "^4.11.0",
+    "standard": "^14.0.0",
+    "tape": "^4.13.0",
     "through2": "^3.0.1"
   },
   "dependencies": {
