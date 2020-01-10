@@ -27,7 +27,8 @@ function abstractPersistence (opts) {
       mq: mq,
       publish: mq.emit.bind(mq),
       subscribe: mq.on.bind(mq),
-      unsubscribe: mq.removeListener.bind(mq)
+      unsubscribe: mq.removeListener.bind(mq),
+      counter: 0
     }
 
     _persistence(function (err, instance) {
@@ -60,7 +61,6 @@ function abstractPersistence (opts) {
     var packet = {
       cmd: 'publish',
       id: instance.broker.id,
-      brokerCounter: opts.counter,
       topic: opts.topic || 'hello/world',
       payload: opts.payload || Buffer.from('muahah'),
       qos: 0,
@@ -119,17 +119,28 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store multiple retained messages in order', function (t, instance) {
-    t.plan(40)
+    var totalMessages = 1000
+
+    t.plan(totalMessages * 2)
+
+    var retained = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 1,
+      retain: true
+    }
 
     function checkIndex (index) {
-      opts.counter = index
-      storeRetained(instance, opts, function (err, packet) {
+      var packet = new Packet(retained, instance.broker)
+
+      instance.storeRetained(packet, function (err) {
         t.notOk(err, 'no error')
-        t.equal(packet.brokerCounter, index, 'packet stored in order')
+        t.equal(packet.brokerCounter, index + 1, 'packet stored in order')
       })
     }
 
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < totalMessages; i++) {
       checkIndex(i)
     }
   })
