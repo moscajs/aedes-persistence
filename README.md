@@ -1,10 +1,10 @@
 # aedes-persistence
 ![.github/workflows/ci.yml](https://github.com/robertsLando/aedes-persistence/workflows/.github/workflows/ci.yml/badge.svg)
-[![Dependencies Status](https://david-dm.org/mcollina/aedes-persistence/status.svg)](https://david-dm.org/mcollina/aedes-persistence)
-[![devDependencies Status](https://david-dm.org/mcollina/aedes-persistence/dev-status.svg)](https://david-dm.org/mcollina/aedes-persistence?type=dev)
+[![Dependencies Status](https://david-dm.org/moscajs/aedes-persistence/status.svg)](https://david-dm.org/moscajs/aedes-persistence)
+[![devDependencies Status](https://david-dm.org/moscajs/aedes-persistence/dev-status.svg)](https://david-dm.org/moscajs/aedes-persistence?type=dev)
 <br/>
-[![Known Vulnerabilities](https://snyk.io/test/github/mcollina/aedes-persistence/badge.svg)](https://snyk.io/test/github/mcollina/aedes-persistence)
-[![Coverage Status](https://coveralls.io/repos/mcollina/aedes-persistence/badge.svg?branch=master&service=github)](https://coveralls.io/github/mcollina/aedes-persistence?branch=master)
+[![Known Vulnerabilities](https://snyk.io/test/github/moscajs/aedes-persistence/badge.svg)](https://snyk.io/test/github/moscajs/aedes-persistence)
+[![Coverage Status](https://coveralls.io/repos/moscajs/aedes-persistence/badge.svg?branch=master&service=github)](https://coveralls.io/github/moscajs/aedes-persistence?branch=master)
 [![NPM version](https://img.shields.io/npm/v/aedes-persistence.svg?style=flat)](https://www.npmjs.com/package/aedes-persistence)
 [![NPM downloads](https://img.shields.io/npm/dm/aedes-persistence.svg?style=flat)](https://www.npmjs.com/package/aedes-persistence)
 
@@ -83,7 +83,7 @@ patterns (according to the MQTT spec) asynchronously.
 ### instance.addSubscriptions(client, subscriptions, callback(err, client))
 
 Add the given offline subscriptions for the given
-[Client](https://github.com/mcollina/aedes#client). The client __must__
+[Client](https://github.com/moscajs/aedes#client). The client __must__
 have connected with `clean: false`, as this is not checked here.
 This is called when a client issue a SUBSCRIBE packet.
 
