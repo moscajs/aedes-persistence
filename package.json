@@ -51,6 +51,6 @@
   "dependencies": {
     "aedes-packet": "^2.1.0",
     "from2": "^2.3.0",
-    "qlobber": "^4.0.1"
+    "qlobber": "^3.1.0"
   }
 }
