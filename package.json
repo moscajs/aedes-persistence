@@ -44,7 +44,7 @@
     "pre-commit": "^1.2.2",
     "pump": "^3.0.0",
     "snazzy": "^8.0.0",
-    "standard": "^14.0.0",
+    "standard": "^14.3.1",
     "tape": "^4.13.0",
     "through2": "^3.0.1"
   },
