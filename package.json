@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mcollina/aedes-persistence.git"
+    "url": "git+https://github.com/moscajs/aedes-persistence.git"
   },
   "keywords": [
     "mqtt",
@@ -33,9 +33,9 @@
   ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/mcollina/aedes-persistence/issues"
+    "url": "https://github.com/moscajs/aedes-persistence/issues"
   },
-  "homepage": "https://github.com/mcollina/aedes-persistence#readme",
+  "homepage": "https://github.com/moscajs/aedes-persistence#readme",
   "devDependencies": {
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
