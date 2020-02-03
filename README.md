@@ -50,6 +50,7 @@ npm install aedes-persistence --save
   * <a href="#delWill"><code>instance.<b>delWill()</b></code></a>
   * <a href="#streamWill"><code>instance.<b>streamWill()</b></code></a>
   * <a href="#getClientList"><code>instance.<b>getClientList()</b></code></a>
+  * <a href="#destroy"><code>instance.<b>destroy()</b></code></a>
 
 -------------------------------------------------------
 <a name="constructor"></a>
@@ -250,6 +251,11 @@ format:
 
 Returns a stream which has all the clientIds subscribed to the
 specified topic
+
+<a name="destroy"></a>
+### instance.destroy(cb(err))
+
+Destroy current persistence. Returns `err` if any
 
 <a name="implement"></a>
 ## Implement another persistence
