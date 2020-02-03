@@ -255,7 +255,7 @@ specified topic
 <a name="destroy"></a>
 ### instance.destroy(cb(err))
 
-Destroy current persistence. Returns `err` if any
+Destroy current persistence. Use callback `cb(err)` to catch errors if any
 
 <a name="implement"></a>
 ## Implement another persistence
