@@ -3,6 +3,7 @@
   "version": "7.2.1",
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
+  "types": "persistence.d.ts",
   "scripts": {
     "lint": "standard --verbose | snazzy",
     "unit": "tape test.js | faucet",
@@ -37,6 +38,7 @@
   },
   "homepage": "https://github.com/moscajs/aedes-persistence#readme",
   "devDependencies": {
+    "aedes": "^0.40.1",
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
     "license-checker": "^25.0.1",
