@@ -797,6 +797,7 @@ function abstractPersistence (opts) {
       payload: Buffer.from('world'),
       qos: 1,
       retain: false,
+      dup: false,
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
@@ -850,6 +851,7 @@ function abstractPersistence (opts) {
       payload: Buffer.from('world'),
       qos: 1,
       retain: false,
+      dup: false,
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
@@ -950,6 +952,7 @@ function abstractPersistence (opts) {
       payload: 'world',
       qos: 1,
       retain: false,
+      dup: false,
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
@@ -995,6 +998,7 @@ function abstractPersistence (opts) {
       payload: Buffer.from('world'),
       qos: 1,
       retain: false,
+      dup: false,
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
@@ -1241,7 +1245,6 @@ function abstractPersistence (opts) {
         // adjusting the objects so they match
         delete retrieved.brokerCounter
         delete retrieved.brokerId
-        delete packet.dup
         delete packet.length
 
         t.deepEqual(retrieved, packet, 'retrieved packet must be deeply equal')
