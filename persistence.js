@@ -19,8 +19,10 @@ function MemoryPersistence () {
   this._retained = []
   // clientId -> topic -> qos
   this._subscriptions = new Map()
+  this._sharedSubscriptions = new Map()
   this._clientsCount = 0
   this._trie = new QlobberSub(QlobberOpts)
+  this._trieShared = new QlobberSub(QlobberOpts)
   this._outgoing = {}
   this._incoming = {}
   this._wills = {}
@@ -84,8 +86,8 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
 
   for (var i = 0; i < subs.length; i += 1) {
     var sub = subs[i]
-    var _sub = stored.get(sub.topic)
-    var hasQoSGreaterThanZero = (_sub !== undefined) && (_sub.qos > 0)
+    var qos = stored.get(sub.topic)
+    var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
     if (sub.qos > 0) {
       trie.add(sub.topic, {
         clientId: client.id,
@@ -98,7 +100,43 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
         topic: sub.topic
       })
     }
-    stored.set(sub.topic, { qos: sub.qos })
+    stored.set(sub.topic, sub.qos)
+  }
+
+  cb(null, client)
+}
+
+MemoryPersistence.prototype.addSharedSubscription = function (client, sub, cb) {
+  var stored = this._sharedSubscriptions.get(client.id)
+  var trie = this._trieShared
+
+  if (!stored) {
+    stored = new Map()
+    this._sharedSubscriptions.set(client.id, stored)
+  }
+
+  trie.add(sub.topic, {
+    clientId: client.id,
+    topic: sub.topic,
+    qos: sub.qos
+  })
+
+  stored.set(sub.topic, { qos: sub.qos, lastUpdate: 0 })
+
+  cb(null, client)
+}
+
+MemoryPersistence.prototype.removeSharedSubscriptions = function (client, topic, cb) {
+  var stored = this._sharedSubscriptions.get(client.id)
+  var trie = this._trieShared
+
+  if (stored) {
+    trie.remove(topic, { clientId: client.id, topic: topic })
+    stored.delete(topic)
+  }
+
+  if (stored.size === 0) {
+    this._sharedSubscriptions.delete(client.id)
   }
 
   cb(null, client)
@@ -111,9 +149,9 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
   if (stored) {
     for (var i = 0; i < subs.length; i += 1) {
       var topic = subs[i]
-      var _sub = stored.get(topic)
-      if (_sub !== undefined) {
-        if (_sub.qos > 0) {
+      var qos = stored.get(topic)
+      if (qos !== undefined) {
+        if (qos > 0) {
           trie.remove(topic, { clientId: client.id, topic: topic })
         }
         stored.delete(topic)
@@ -135,9 +173,7 @@ MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
   if (stored) {
     subs = []
     for (var topicAndQos of stored) {
-      var sub = topicAndQos[1]
-      sub.topic = topicAndQos[0]
-      subs.push(sub)
+      subs.push({ topic: topicAndQos[0], qos: topicAndQos[1] })
     }
   }
   cb(null, subs, client)
@@ -152,25 +188,21 @@ MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
 }
 
 MemoryPersistence.prototype.nextSharedSubscription = function (topic, group, cb) {
-  this.subscriptionsByTopic('$share/' + group + '/' + topic, function (err, subs) {
-    if (err) cb(err, null)
-    else {
-      var sub = null
-      for (let i = 0, len = subs.length; i < len; i++) {
-        if (subs[i].lastUpdate === undefined) {
-          sub = subs[i]
-          break
-        } else if (subs[i].lastUpdate < sub.lastUpdate) {
-          sub = subs[i]
-        }
-      }
-      cb(null, sub)
+  var subs = this._trieShared.match('$share/' + group + '/' + topic)
+  var sub = null
+  for (let i = 0, len = subs.length; i < len; i++) {
+    if (subs[i].lastUpdate === 0) {
+      sub = subs[i]
+      break
+    } else if (subs[i].lastUpdate < sub.lastUpdate) {
+      sub = subs[i]
     }
-  })
+  }
+  cb(null, sub)
 }
 
 MemoryPersistence.prototype.updateSharedSubscription = function (client, topic, group, cb) {
-  var stored = this._subscriptions.get(client.id)
+  var stored = this._sharedSubscriptions.get(client.id)
   topic = '$share/' + group + '/' + topic
 
   if (stored) {
@@ -190,7 +222,7 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
 
   if (stored) {
     for (var topicAndQos of stored) {
-      if (topicAndQos[1].qos > 0) {
+      if (topicAndQos[1] > 0) {
         var topic = topicAndQos[0]
         trie.remove(topic, { clientId: client.id, topic: topic })
       }
