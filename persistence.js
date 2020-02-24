@@ -7,7 +7,8 @@ var Packet = require('aedes-packet')
 var QlobberOpts = {
   wildcard_one: '+',
   wildcard_some: '#',
-  separator: '/'
+  separator: '/',
+  match_empty_levels: true
 }
 
 function MemoryPersistence () {
@@ -151,17 +152,20 @@ MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
 }
 
 MemoryPersistence.prototype.nextSharedSubscription = function (topic, group, cb) {
-  this.subscriptionsByTopic('$share/' + group + '/' + topic, function (subs) {
-    var sub = null
-    for (let i = 0, len = subs.length; i < len; i++) {
-      if (subs[i].lastUpdate === undefined) {
-        sub = subs[i]
-        break
-      } else if (subs[i].lastUpdate < sub.lastUpdate) {
-        sub = subs[i]
+  this.subscriptionsByTopic('$share/' + group + '/' + topic, function (err, subs) {
+    if (err) cb(err, null)
+    else {
+      var sub = null
+      for (let i = 0, len = subs.length; i < len; i++) {
+        if (subs[i].lastUpdate === undefined) {
+          sub = subs[i]
+          break
+        } else if (subs[i].lastUpdate < sub.lastUpdate) {
+          sub = subs[i]
+        }
       }
+      cb(null, sub)
     }
-    cb(null, sub)
   })
 }
 
