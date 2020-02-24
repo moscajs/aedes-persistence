@@ -83,8 +83,8 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
 
   for (var i = 0; i < subs.length; i += 1) {
     var sub = subs[i]
-    var qos = stored.get(sub.topic)
-    var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
+    var _sub = stored.get(sub.topic)
+    var hasQoSGreaterThanZero = (_sub !== undefined) && (_sub.qos > 0)
     if (sub.qos > 0) {
       trie.add(sub.topic, {
         clientId: client.id,
@@ -97,7 +97,7 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
         topic: sub.topic
       })
     }
-    stored.set(sub.topic, sub.qos)
+    stored.set(sub.topic, { qos: sub.qos })
   }
 
   cb(null, client)
@@ -110,9 +110,9 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
   if (stored) {
     for (var i = 0; i < subs.length; i += 1) {
       var topic = subs[i]
-      var qos = stored.get(topic)
-      if (qos !== undefined) {
-        if (qos > 0) {
+      var _sub = stored.get(topic)
+      if (_sub !== undefined) {
+        if (_sub.qos > 0) {
           trie.remove(topic, { clientId: client.id, topic: topic })
         }
         stored.delete(topic)
@@ -134,7 +134,9 @@ MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
   if (stored) {
     subs = []
     for (var topicAndQos of stored) {
-      subs.push({ topic: topicAndQos[0], qos: topicAndQos[1] })
+      var sub = topicAndQos[1]
+      sub.topic = topicAndQos[0]
+      subs.push(sub)
     }
   }
   cb(null, subs, client)
@@ -148,13 +150,43 @@ MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
   cb(null, this._trie.match(pattern))
 }
 
+MemoryPersistence.prototype.nextSharedSubscription = function (topic, group, cb) {
+  this.subscriptionsByTopic('$share/' + group + '/' + topic, function (subs) {
+    var sub = null
+    for (let i = 0, len = subs.length; i < len; i++) {
+      if (subs[i].lastUpdate === undefined) {
+        sub = subs[i]
+        break
+      } else if (subs[i].lastUpdate < sub.lastUpdate) {
+        sub = subs[i]
+      }
+    }
+    cb(null, sub)
+  })
+}
+
+MemoryPersistence.prototype.updateSharedSubscription = function (client, topic, group, cb) {
+  var stored = this._subscriptions.get(client.id)
+  topic = '$share/' + group + '/' + topic
+
+  if (stored) {
+    var sub = stored.get(topic)
+
+    if (sub) {
+      stored.set(topic, { qos: stored.qos, lastUpdate: Date.now() })
+    }
+  }
+
+  cb(null)
+}
+
 MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
   var trie = this._trie
   var stored = this._subscriptions.get(client.id)
 
   if (stored) {
     for (var topicAndQos of stored) {
-      if (topicAndQos[1] > 0) {
+      if (topicAndQos[1].qos > 0) {
         var topic = topicAndQos[0]
         trie.remove(topic, { clientId: client.id, topic: topic })
       }
