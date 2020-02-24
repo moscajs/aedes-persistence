@@ -126,7 +126,7 @@ MemoryPersistence.prototype.addSharedSubscription = function (client, sub, cb) {
   cb(null, client)
 }
 
-MemoryPersistence.prototype.removeSharedSubscriptions = function (client, topic, cb) {
+MemoryPersistence.prototype.removeSharedSubscription = function (client, topic, cb) {
   var stored = this._sharedSubscriptions.get(client.id)
   var trie = this._trieShared
 
@@ -189,12 +189,18 @@ MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
 
 MemoryPersistence.prototype.nextSharedSubscription = function (topic, group, cb) {
   var subs = this._trieShared.match('$share/' + group + '/' + topic)
+  var stored = this._sharedSubscriptions
+
   var sub = null
   for (let i = 0, len = subs.length; i < len; i++) {
-    if (subs[i].lastUpdate === 0) {
+    var s = stored.get(subs[i].clientId)
+    if (!s || !s.get(subs[i].topic)) continue
+    s = s.get(subs[i].topic)
+
+    if (s.lastUpdate === 0) {
       sub = subs[i]
       break
-    } else if (subs[i].lastUpdate < sub.lastUpdate) {
+    } else if (s.lastUpdate < sub.lastUpdate) {
       sub = subs[i]
     }
   }
@@ -209,7 +215,7 @@ MemoryPersistence.prototype.updateSharedSubscription = function (client, topic, 
     var sub = stored.get(topic)
 
     if (sub) {
-      stored.set(topic, { qos: stored.qos, lastUpdate: Date.now() })
+      sub.lastUpdate = Date.now()
     }
   }
 
