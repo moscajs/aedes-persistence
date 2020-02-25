@@ -1,8 +1,8 @@
 'use strict'
 
-var test = require('tape').test
-var memory = require('./')
-var abs = require('./abstract')
+const test = require('tape').test
+const memory = require('./')
+const abs = require('./abstract')
 
 abs({
   test: test,

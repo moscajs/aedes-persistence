@@ -1,18 +1,18 @@
 'use strict'
 
-var concat = require('concat-stream')
-var pump = require('pump')
-var through = require('through2')
-var Packet = require('aedes-packet')
+const concat = require('concat-stream')
+const pump = require('pump')
+const through = require('through2')
+const Packet = require('aedes-packet')
 
 function abstractPersistence (opts) {
-  var test = opts.test
+  const test = opts.test
   var _persistence = opts.persistence
-  var waitForReady = opts.waitForReady
+  const waitForReady = opts.waitForReady
 
   // requiring it here so it will not error for modules
   // not using the default emitter
-  var buildEmitter = opts.buildEmitter || require('mqemitter')
+  const buildEmitter = opts.buildEmitter || require('mqemitter')
 
   if (_persistence.length === 0) {
     _persistence = function asyncify (cb) {
@@ -21,8 +21,8 @@ function abstractPersistence (opts) {
   }
 
   function persistence (cb) {
-    var mq = buildEmitter()
-    var broker = {
+    const mq = buildEmitter()
+    const broker = {
       id: 'broker-42',
       mq: mq,
       publish: mq.emit.bind(mq),
@@ -58,7 +58,7 @@ function abstractPersistence (opts) {
   function storeRetained (instance, opts, cb) {
     opts = opts || {}
 
-    var packet = {
+    const packet = {
       cmd: 'publish',
       id: instance.broker.id,
       topic: opts.topic || 'hello/world',
@@ -119,11 +119,11 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store multiple retained messages in order', function (t, instance) {
-    var totalMessages = 1000
+    const totalMessages = 1000
 
     t.plan(totalMessages * 2)
 
-    var retained = {
+    const retained = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -132,7 +132,7 @@ function abstractPersistence (opts) {
     }
 
     function checkIndex (index) {
-      var packet = new Packet(retained, instance.broker)
+      const packet = new Packet(retained, instance.broker)
 
       instance.storeRetained(packet, function (err) {
         t.notOk(err, 'no error')
@@ -153,7 +153,7 @@ function abstractPersistence (opts) {
       }, function (err) {
         t.notOk(err, 'no error')
 
-        var stream = instance.createRetainedStream('#')
+        const stream = instance.createRetainedStream('#')
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [], 'must return an empty list')
@@ -171,7 +171,7 @@ function abstractPersistence (opts) {
       }, function (err, packet) {
         t.notOk(err, 'no error')
 
-        var stream = instance.createRetainedStream('#')
+        const stream = instance.createRetainedStream('#')
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [packet], 'must return the last packet')
@@ -182,7 +182,7 @@ function abstractPersistence (opts) {
   })
 
   testInstance('Create a new packet while storing a retained message', function (t, instance) {
-    var packet = {
+    const packet = {
       cmd: 'publish',
       id: instance.broker.id,
       topic: opts.topic || 'hello/world',
@@ -190,13 +190,13 @@ function abstractPersistence (opts) {
       qos: 0,
       retain: true
     }
-    var newPacket = Object.assign({}, packet)
+    const newPacket = Object.assign({}, packet)
 
     instance.storeRetained(packet, function (err) {
       t.notOk(err, 'no error')
       // packet reference change to check if a new packet is stored always
       packet.retain = false
-      var stream = instance.createRetainedStream('#')
+      const stream = instance.createRetainedStream('#')
 
       stream.pipe(concat(function (list) {
         t.deepEqual(list, [newPacket], 'must return the last packet')
@@ -206,8 +206,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store and look up subscriptions by client', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 1
     }, {
@@ -231,8 +231,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('remove subscriptions by client', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 1
     }, {
@@ -259,8 +259,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store and look up subscriptions by topic', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 1
     }, {
@@ -290,9 +290,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('get client list after subscriptions', function (t, instance) {
-    var client1 = { id: 'abcde' }
-    var client2 = { id: 'efghi' }
-    var subs = [{
+    const client1 = { id: 'abcde' }
+    const client2 = { id: 'efghi' }
+    const subs = [{
       topic: 'helloagain',
       qos: 1
     }]
@@ -301,7 +301,7 @@ function abstractPersistence (opts) {
       t.notOk(err, 'no error for client 1')
       instance.addSubscriptions(client2, subs, function (err) {
         t.notOk(err, 'no error for client 2')
-        var stream = instance.getClientList(subs[0].topic)
+        const stream = instance.getClientList(subs[0].topic)
         stream.pipe(concat({ encoding: 'object' }, function (out) {
           t.deepEqual(out, [client1.id, client2.id])
           instance.destroy(t.end.bind(t))
@@ -311,9 +311,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('get client list after an unsubscribe', function (t, instance) {
-    var client1 = { id: 'abcde' }
-    var client2 = { id: 'efghi' }
-    var subs = [{
+    const client1 = { id: 'abcde' }
+    const client2 = { id: 'efghi' }
+    const subs = [{
       topic: 'helloagain',
       qos: 1
     }]
@@ -335,9 +335,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('get subscriptions list after an unsubscribe', function (t, instance) {
-    var client1 = { id: 'abcde' }
-    var client2 = { id: 'efghi' }
-    var subs = [{
+    const client1 = { id: 'abcde' }
+    const client2 = { id: 'efghi' }
+    const subs = [{
       topic: 'helloagain',
       qos: 1
     }]
@@ -359,8 +359,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('QoS 0 subscriptions, restored but not matched', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 0
     }, {
@@ -390,8 +390,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('clean subscriptions', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 1
     }, {
@@ -425,7 +425,7 @@ function abstractPersistence (opts) {
   })
 
   testInstance('clean subscriptions with no active subscriptions', function (t, instance) {
-    var client = { id: 'abcde' }
+    const client = { id: 'abcde' }
 
     instance.cleanSubscriptions(client, function (err) {
       t.notOk(err, 'no error')
@@ -450,8 +450,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('same topic, different QoS', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 0
     }, {
@@ -491,10 +491,10 @@ function abstractPersistence (opts) {
   })
 
   testInstance('replace subscriptions', function (t, instance) {
-    var client = { id: 'abcde' }
-    var topic = 'hello'
-    var sub = { topic: topic }
-    var subByTopic = { clientId: client.id, topic: topic }
+    const client = { id: 'abcde' }
+    const topic = 'hello'
+    const sub = { topic: topic }
+    const subByTopic = { clientId: client.id, topic: topic }
 
     function check (qos, cb) {
       sub.qos = subByTopic.qos = qos
@@ -536,9 +536,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('replace subscriptions in same call', function (t, instance) {
-    var client = { id: 'abcde' }
-    var topic = 'hello'
-    var subs = [
+    const client = { id: 'abcde' }
+    const topic = 'hello'
+    const subs = [
       { topic: topic, qos: 0 },
       { topic: topic, qos: 1 },
       { topic: topic, qos: 2 },
@@ -566,8 +566,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store and count subscriptions', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs = [{
+    const client = { id: 'abcde' }
+    const subs = [{
       topic: 'hello',
       qos: 1
     }, {
@@ -633,9 +633,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('count subscriptions with two clients', function (t, instance) {
-    var client1 = { id: 'abcde' }
-    var client2 = { id: 'fghij' }
-    var subs = [{
+    const client1 = { id: 'abcde' }
+    const client2 = { id: 'fghij' }
+    const subs = [{
       topic: 'hello',
       qos: 1
     }, {
@@ -691,9 +691,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add duplicate subs to persistence for qos > 0', function (t, instance) {
-    var client = { id: 'abcde' }
-    var topic = 'hello'
-    var subs = [{
+    const client = { id: 'abcde' }
+    const topic = 'hello'
+    const subs = [{
       topic: topic,
       qos: 1
     }]
@@ -716,9 +716,9 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add duplicate subs to persistence for qos 0', function (t, instance) {
-    var client = { id: 'abcde' }
-    var topic = 'hello'
-    var subs = [{
+    const client = { id: 'abcde' }
+    const topic = 'hello'
+    const subs = [{
       topic: topic,
       qos: 0
     }]
@@ -740,12 +740,12 @@ function abstractPersistence (opts) {
   })
 
   testInstance('get topic list after concurrent subscriptions of a client', function (t, instance) {
-    var client = { id: 'abcde' }
-    var subs1 = [{
+    const client = { id: 'abcde' }
+    const subs1 = [{
       topic: 'hello1',
       qos: 1
     }]
-    var subs2 = [{
+    const subs2 = [{
       topic: 'hello2',
       qos: 1
     }]
@@ -772,15 +772,15 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add outgoing packet and stream it', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde',
       topic: 'hello',
       qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -791,7 +791,7 @@ function abstractPersistence (opts) {
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
-    var expected = {
+    const expected = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -804,7 +804,7 @@ function abstractPersistence (opts) {
 
     instance.outgoingEnqueue(sub, packet, function (err) {
       t.error(err)
-      var stream = instance.outgoingStream(client)
+      const stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
@@ -817,24 +817,24 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add outgoing packet for multiple subs and stream to all', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde',
       topic: 'hello',
       qos: 1
     }
-    var sub2 = {
+    const sub2 = {
       clientId: 'fghih',
       topic: 'hello',
       qos: 1
     }
-    var subs = [sub, sub2]
-    var client = {
+    const subs = [sub, sub2]
+    const client = {
       id: sub.clientId
     }
-    var client2 = {
+    const client2 = {
       id: sub2.clientId
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -845,7 +845,7 @@ function abstractPersistence (opts) {
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
-    var expected = {
+    const expected = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -858,14 +858,14 @@ function abstractPersistence (opts) {
 
     instance.outgoingEnqueueCombi(subs, packet, function (err) {
       t.error(err)
-      var stream = instance.outgoingStream(client)
+      const stream = instance.outgoingStream(client)
       stream.pipe(concat(function (list) {
         var packet = list[0]
         t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
         delete packet.messageId
         t.deepEqual(packet, expected, 'must return the packet')
 
-        var stream2 = instance.outgoingStream(client2)
+        const stream2 = instance.outgoingStream(client2)
         stream2.pipe(concat(function (list) {
           var packet = list[0]
           t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
@@ -878,15 +878,15 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add outgoing packet as a string and pump', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde',
       topic: 'hello',
       qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet1 = {
+    const packet1 = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -895,7 +895,7 @@ function abstractPersistence (opts) {
       brokerId: instance.broker.id,
       brokerCounter: 10
     }
-    var packet2 = {
+    const packet2 = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('matteo'),
@@ -904,10 +904,10 @@ function abstractPersistence (opts) {
       brokerId: instance.broker.id,
       brokerCounter: 50
     }
-    var queue = []
+    const queue = []
     enqueueAndUpdate(t, instance, client, sub, packet1, 42, function (updated1) {
       enqueueAndUpdate(t, instance, client, sub, packet2, 42, function (updated2) {
-        var stream = instance.outgoingStream(client)
+        const stream = instance.outgoingStream(client)
         pump(stream, through.obj(function clearQueue (data, enc, next) {
           instance.outgoingUpdate(client, data,
             function (_, client, packet) {
@@ -927,15 +927,15 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add outgoing packet as a string and stream', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde',
       topic: 'hello',
       qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: 'world',
@@ -946,7 +946,7 @@ function abstractPersistence (opts) {
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
-    var expected = {
+    const expected = {
       cmd: 'publish',
       topic: 'hello',
       payload: 'world',
@@ -959,7 +959,7 @@ function abstractPersistence (opts) {
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
-      var stream = instance.outgoingStream(client)
+      const stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
@@ -972,15 +972,15 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add outgoing packet and stream it twice', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde',
       topic: 'hello',
       qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -992,7 +992,7 @@ function abstractPersistence (opts) {
       brokerCounter: 42,
       messageId: 4242
     }
-    var expected = {
+    const expected = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1005,7 +1005,7 @@ function abstractPersistence (opts) {
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
-      var stream = instance.outgoingStream(client)
+      const stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
@@ -1013,7 +1013,7 @@ function abstractPersistence (opts) {
         delete packet.messageId
         t.deepEqual(packet, expected, 'must return the packet')
 
-        var stream = instance.outgoingStream(client)
+        const stream = instance.outgoingStream(client)
 
         stream.pipe(concat(function (list) {
           t.deepEqual(list, [expected], 'must return the packet')
@@ -1027,7 +1027,7 @@ function abstractPersistence (opts) {
   function enqueueAndUpdate (t, instance, client, sub, packet, messageId, callback) {
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
-      var updated = new Packet(packet)
+      const updated = new Packet(packet)
       updated.messageId = messageId
 
       instance.outgoingUpdate(client, updated, function (err, reclient, repacket) {
@@ -1040,13 +1040,13 @@ function abstractPersistence (opts) {
   }
 
   testInstance('add outgoing packet and update messageId', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1059,7 +1059,7 @@ function abstractPersistence (opts) {
     }
 
     enqueueAndUpdate(t, instance, client, sub, packet, 42, function (updated) {
-      var stream = instance.outgoingStream(client)
+      const stream = instance.outgoingStream(client)
       delete updated.messageId
       stream.pipe(concat(function (list) {
         delete list[0].messageId
@@ -1071,13 +1071,13 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add 2 outgoing packet and clear messageId', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet1 = {
+    const packet1 = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1088,7 +1088,7 @@ function abstractPersistence (opts) {
       brokerId: instance.broker.id,
       brokerCounter: 42
     }
-    var packet2 = {
+    const packet2 = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('matteo'),
@@ -1107,7 +1107,7 @@ function abstractPersistence (opts) {
           t.deepEqual(packet.messageId, 42, 'must have the same messageId')
           t.deepEqual(packet.payload.toString(), packet1.payload.toString(), 'must have original payload')
           t.deepEqual(packet.topic, packet1.topic, 'must have original topic')
-          var stream = instance.outgoingStream(client)
+          const stream = instance.outgoingStream(client)
           delete updated2.messageId
           stream.pipe(concat(function (list) {
             delete list[0].messageId
@@ -1121,13 +1121,13 @@ function abstractPersistence (opts) {
   })
 
   testInstance('update to publish w/ same messageId', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet1 = {
+    const packet1 = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1139,7 +1139,7 @@ function abstractPersistence (opts) {
       brokerCounter: 42,
       messageId: 42
     }
-    var packet2 = {
+    const packet2 = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1156,7 +1156,7 @@ function abstractPersistence (opts) {
       instance.outgoingEnqueue(sub, packet2, function () {
         instance.outgoingUpdate(client, packet1, function () {
           instance.outgoingUpdate(client, packet2, function () {
-            var stream = instance.outgoingStream(client)
+            const stream = instance.outgoingStream(client)
             stream.pipe(concat(function (list) {
               t.equal(list.length, 2, 'must have two items in queue')
               t.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
@@ -1172,13 +1172,13 @@ function abstractPersistence (opts) {
   })
 
   testInstance('update to pubrel', function (t, instance) {
-    var sub = {
+    const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
     }
-    var client = {
+    const client = {
       id: sub.clientId
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1192,7 +1192,7 @@ function abstractPersistence (opts) {
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
       t.error(err)
-      var updated = new Packet(packet)
+      const updated = new Packet(packet)
       updated.messageId = 42
 
       instance.outgoingUpdate(client, updated, function (err, reclient, repacket) {
@@ -1200,7 +1200,7 @@ function abstractPersistence (opts) {
         t.equal(reclient, client, 'client matches')
         t.equal(repacket, updated, 'packet matches')
 
-        var pubrel = {
+        const pubrel = {
           cmd: 'pubrel',
           messageId: updated.messageId
         }
@@ -1208,7 +1208,7 @@ function abstractPersistence (opts) {
         instance.outgoingUpdate(client, pubrel, function (err) {
           t.error(err)
 
-          var stream = instance.outgoingStream(client)
+          const stream = instance.outgoingStream(client)
 
           stream.pipe(concat(function (list) {
             t.deepEqual(list, [pubrel], 'must return the packet')
@@ -1220,10 +1220,10 @@ function abstractPersistence (opts) {
   })
 
   testInstance('add incoming packet, get it, and clear with messageId', function (t, instance) {
-    var client = {
+    const client = {
       id: 'abcde'
     }
-    var packet = {
+    const packet = {
       cmd: 'publish',
       topic: 'hello',
       payload: Buffer.from('world'),
@@ -1265,10 +1265,10 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store, fetch and delete will message', function (t, instance) {
-    var client = {
+    const client = {
       id: '12345'
     }
-    var expected = {
+    const expected = {
       topic: 'hello/died',
       payload: Buffer.from('muahahha'),
       qos: 0,
@@ -1299,10 +1299,10 @@ function abstractPersistence (opts) {
   })
 
   testInstance('stream all will messages', function (t, instance) {
-    var client = {
+    const client = {
       id: '12345'
     }
-    var toWrite = {
+    const toWrite = {
       topic: 'hello/died',
       payload: Buffer.from('muahahha'),
       qos: 0,
@@ -1332,20 +1332,20 @@ function abstractPersistence (opts) {
   })
 
   testInstance('stream all will message for unknown brokers', function (t, instance) {
-    var originalId = instance.broker.id
-    var client = {
+    const originalId = instance.broker.id
+    const client = {
       id: '42'
     }
-    var anotherClient = {
+    const anotherClient = {
       id: '24'
     }
-    var toWrite1 = {
+    const toWrite1 = {
       topic: 'hello/died42',
       payload: Buffer.from('muahahha'),
       qos: 0,
       retain: true
     }
-    var toWrite2 = {
+    const toWrite2 = {
       topic: 'hello/died24',
       payload: Buffer.from('muahahha'),
       qos: 0,
@@ -1383,11 +1383,11 @@ function abstractPersistence (opts) {
   })
 
   testInstance('delete wills from dead brokers', function (t, instance) {
-    var client = {
+    const client = {
       id: '42'
     }
 
-    var toWrite1 = {
+    const toWrite1 = {
       topic: 'hello/died42',
       payload: Buffer.from('muahahha'),
       qos: 0,
@@ -1407,7 +1407,7 @@ function abstractPersistence (opts) {
   })
 
   testInstance('do not error if unkown messageId in outoingClearMessageId', function (t, instance) {
-    var client = {
+    const client = {
       id: 'abc-123'
     }
 
