@@ -53,6 +53,9 @@
     "url": "https://github.com/moscajs/aedes-persistence/issues"
   },
   "homepage": "https://github.com/moscajs/aedes-persistence#readme",
+  "engines": {
+    "node": ">=10"
+  },
   "devDependencies": {
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
