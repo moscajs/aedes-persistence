@@ -120,8 +120,7 @@ function abstractPersistence (opts) {
 
   testInstance('store multiple retained messages in order', function (t, instance) {
     var totalMessages = 1000
-
-    t.plan(totalMessages * 2)
+    var done = 0
 
     var retained = {
       cmd: 'publish',
@@ -137,6 +136,9 @@ function abstractPersistence (opts) {
       instance.storeRetained(packet, function (err) {
         t.notOk(err, 'no error')
         t.equal(packet.brokerCounter, index + 1, 'packet stored in order')
+        if (++done === totalMessages) {
+          instance.destroy(t.end.bind(t))
+        }
       })
     }
 
@@ -921,7 +923,7 @@ function abstractPersistence (opts) {
             t.deepEqual(queue[0], updated1)
             t.deepEqual(queue[1], updated2)
           }
-          t.end()
+          instance.destroy(t.end.bind(t))
         })
       })
     })
