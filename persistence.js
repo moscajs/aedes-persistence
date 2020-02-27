@@ -355,3 +355,4 @@ MemoryPersistence.prototype.destroy = function (cb) {
 }
 
 module.exports = MemoryPersistence
+module.exports.Packet = Packet

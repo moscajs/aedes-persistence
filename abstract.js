@@ -906,11 +906,12 @@ function abstractPersistence (opts) {
     }
     var queue = []
     enqueueAndUpdate(t, instance, client, sub, packet1, 42, function (updated1) {
-      enqueueAndUpdate(t, instance, client, sub, packet2, 42, function (updated2) {
+      enqueueAndUpdate(t, instance, client, sub, packet2, 43, function (updated2) {
         var stream = instance.outgoingStream(client)
         pump(stream, through.obj(function clearQueue (data, enc, next) {
           instance.outgoingUpdate(client, data,
-            function (_, client, packet) {
+            function (err, client, packet) {
+              t.notOk(err, 'no error')
               queue.push(packet)
               next()
             })
