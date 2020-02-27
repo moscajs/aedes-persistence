@@ -102,6 +102,12 @@ function abstractPersistence (opts) {
     })
   }
 
+  function testPacket (t, packet, expected) {
+    if (packet.messageId === null) packet.messageId = undefined
+    t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
+    t.deepEqual(packet, expected, 'must return the packet')
+  }
+
   test('store and look up retained messages', function (t) {
     matchRetainedWithPattern(t, 'hello/world')
   })
@@ -801,7 +807,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueue(sub, packet, function (err) {
@@ -810,9 +817,7 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
         instance.destroy(t.end.bind(t))
       }))
     })
@@ -855,7 +860,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueueCombi(subs, packet, function (err) {
@@ -863,16 +869,12 @@ function abstractPersistence (opts) {
       var stream = instance.outgoingStream(client)
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
 
         var stream2 = instance.outgoingStream(client2)
         stream2.pipe(concat(function (list) {
           var packet = list[0]
-          t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-          delete packet.messageId
-          t.deepEqual(packet, expected, 'must return the packet')
+          testPacket(t, packet, expected)
           instance.destroy(t.end.bind(t))
         }))
       }))
@@ -957,7 +959,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
@@ -966,9 +969,7 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
         instance.destroy(t.end.bind(t))
       }))
     })
@@ -1003,7 +1004,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
@@ -1012,15 +1014,14 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
 
         var stream = instance.outgoingStream(client)
 
         stream.pipe(concat(function (list) {
-          t.deepEqual(list, [expected], 'must return the packet')
-          t.notEqual(list[0], expected, 'packet must be a different object')
+          var packet = list[0]
+          testPacket(t, packet, expected)
+          t.notEqual(packet, expected, 'packet must be a different object')
           instance.destroy(t.end.bind(t))
         }))
       }))
