@@ -102,6 +102,12 @@ function abstractPersistence (opts) {
     })
   }
 
+  function testPacket (t, packet, expected) {
+    if (packet.messageId === null) packet.messageId = undefined
+    t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
+    t.deepEqual(packet, expected, 'must return the packet')
+  }
+
   test('store and look up retained messages', function (t) {
     matchRetainedWithPattern(t, 'hello/world')
   })
@@ -119,9 +125,8 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store multiple retained messages in order', function (t, instance) {
-    const totalMessages = 1000
-
-    t.plan(totalMessages * 2)
+    var totalMessages = 1000
+    var done = 0
 
     const retained = {
       cmd: 'publish',
@@ -137,6 +142,9 @@ function abstractPersistence (opts) {
       instance.storeRetained(packet, function (err) {
         t.notOk(err, 'no error')
         t.equal(packet.brokerCounter, index + 1, 'packet stored in order')
+        if (++done === totalMessages) {
+          instance.destroy(t.end.bind(t))
+        }
       })
     }
 
@@ -799,7 +807,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueue(sub, packet, function (err) {
@@ -808,9 +817,7 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
         instance.destroy(t.end.bind(t))
       }))
     })
@@ -853,7 +860,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueueCombi(subs, packet, function (err) {
@@ -861,16 +869,12 @@ function abstractPersistence (opts) {
       const stream = instance.outgoingStream(client)
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
 
         const stream2 = instance.outgoingStream(client2)
         stream2.pipe(concat(function (list) {
           var packet = list[0]
-          t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-          delete packet.messageId
-          t.deepEqual(packet, expected, 'must return the packet')
+          testPacket(t, packet, expected)
           instance.destroy(t.end.bind(t))
         }))
       }))
@@ -906,11 +910,12 @@ function abstractPersistence (opts) {
     }
     const queue = []
     enqueueAndUpdate(t, instance, client, sub, packet1, 42, function (updated1) {
-      enqueueAndUpdate(t, instance, client, sub, packet2, 42, function (updated2) {
+      enqueueAndUpdate(t, instance, client, sub, packet2, 43, function (updated2) {
         const stream = instance.outgoingStream(client)
         pump(stream, through.obj(function clearQueue (data, enc, next) {
           instance.outgoingUpdate(client, data,
-            function (_, client, packet) {
+            function (err, client, packet) {
+              t.notOk(err, 'no error')
               queue.push(packet)
               next()
             })
@@ -920,7 +925,7 @@ function abstractPersistence (opts) {
             t.deepEqual(queue[0], updated1)
             t.deepEqual(queue[1], updated2)
           }
-          t.end()
+          instance.destroy(t.end.bind(t))
         })
       })
     })
@@ -954,7 +959,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
@@ -963,9 +969,7 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
         instance.destroy(t.end.bind(t))
       }))
     })
@@ -1000,7 +1004,8 @@ function abstractPersistence (opts) {
       retain: false,
       dup: false,
       brokerId: instance.broker.id,
-      brokerCounter: 42
+      brokerCounter: 42,
+      messageId: undefined
     }
 
     instance.outgoingEnqueueCombi([sub], packet, function (err) {
@@ -1009,15 +1014,14 @@ function abstractPersistence (opts) {
 
       stream.pipe(concat(function (list) {
         var packet = list[0]
-        t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-        delete packet.messageId
-        t.deepEqual(packet, expected, 'must return the packet')
+        testPacket(t, packet, expected)
 
         const stream = instance.outgoingStream(client)
 
         stream.pipe(concat(function (list) {
-          t.deepEqual(list, [expected], 'must return the packet')
-          t.notEqual(list[0], expected, 'packet must be a different object')
+          var packet = list[0]
+          testPacket(t, packet, expected)
+          t.notEqual(packet, expected, 'packet must be a different object')
           instance.destroy(t.end.bind(t))
         }))
       }))
