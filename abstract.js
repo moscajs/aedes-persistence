@@ -125,7 +125,7 @@ function abstractPersistence (opts) {
   })
 
   testInstance('store multiple retained messages in order', function (t, instance) {
-    var totalMessages = 1000
+    const totalMessages = 1000
     var done = 0
 
     const retained = {
@@ -332,7 +332,7 @@ function abstractPersistence (opts) {
         t.notOk(err, 'no error for client 2')
         instance.removeSubscriptions(client2, [subs[0].topic], function (err, reClient) {
           t.notOk(err, 'no error for removeSubscriptions')
-          var stream = instance.getClientList(subs[0].topic)
+          const stream = instance.getClientList(subs[0].topic)
           stream.pipe(concat({ encoding: 'object' }, function (out) {
             t.deepEqual(out, [client1.id])
             instance.destroy(t.end.bind(t))
