@@ -1,10 +1,10 @@
 'use strict'
 
-var from2 = require('from2')
-var QlobberSub = require('qlobber/aedes/qlobber-sub')
-var QlobberTrue = require('qlobber').QlobberTrue
-var Packet = require('aedes-packet')
-var QlobberOpts = {
+const from2 = require('from2')
+const QlobberSub = require('qlobber/aedes/qlobber-sub')
+const { QlobberTrue } = require('qlobber')
+const Packet = require('aedes-packet')
+const QlobberOpts = {
   wildcard_one: '+',
   wildcard_some: '#',
   separator: '/'
@@ -39,7 +39,7 @@ MemoryPersistence.prototype.storeRetained = function (packet, cb) {
 }
 
 function matchingStream (current, pattern) {
-  var matcher = new QlobberTrue(QlobberOpts)
+  const matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
     for (var i = 0; i < pattern.length; i += 1) {
@@ -73,7 +73,7 @@ MemoryPersistence.prototype.createRetainedStreamCombi = function (patterns) {
 
 MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
   var stored = this._subscriptions.get(client.id)
-  var trie = this._trie
+  const trie = this._trie
 
   if (!stored) {
     stored = new Map()
@@ -82,9 +82,9 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
   }
 
   for (var i = 0; i < subs.length; i += 1) {
-    var sub = subs[i]
-    var qos = stored.get(sub.topic)
-    var hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
+    const sub = subs[i]
+    const qos = stored.get(sub.topic)
+    const hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
     if (sub.qos > 0) {
       trie.add(sub.topic, {
         clientId: client.id,
@@ -104,13 +104,13 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
 }
 
 MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
-  var stored = this._subscriptions.get(client.id)
-  var trie = this._trie
+  const stored = this._subscriptions.get(client.id)
+  const trie = this._trie
 
   if (stored) {
     for (var i = 0; i < subs.length; i += 1) {
-      var topic = subs[i]
-      var qos = stored.get(topic)
+      const topic = subs[i]
+      const qos = stored.get(topic)
       if (qos !== undefined) {
         if (qos > 0) {
           trie.remove(topic, { clientId: client.id, topic: topic })
@@ -130,10 +130,10 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
 
 MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
   var subs = null
-  var stored = this._subscriptions.get(client.id)
+  const stored = this._subscriptions.get(client.id)
   if (stored) {
     subs = []
-    for (var topicAndQos of stored) {
+    for (const topicAndQos of stored) {
       subs.push({ topic: topicAndQos[0], qos: topicAndQos[1] })
     }
   }
@@ -149,13 +149,13 @@ MemoryPersistence.prototype.subscriptionsByTopic = function (pattern, cb) {
 }
 
 MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
-  var trie = this._trie
-  var stored = this._subscriptions.get(client.id)
+  const trie = this._trie
+  const stored = this._subscriptions.get(client.id)
 
   if (stored) {
-    for (var topicAndQos of stored) {
+    for (const topicAndQos of stored) {
       if (topicAndQos[1] > 0) {
-        var topic = topicAndQos[0]
+        const topic = topicAndQos[0]
         trie.remove(topic, { clientId: client.id, topic: topic })
       }
     }
@@ -180,23 +180,22 @@ MemoryPersistence.prototype.outgoingEnqueueCombi = function (subs, packet, cb) {
 }
 
 function _outgoingEnqueue (sub, packet) {
-  var id = sub.clientId
-  var queue = this._outgoing[id] || []
+  const id = sub.clientId
+  const queue = this._outgoing[id] || []
 
   this._outgoing[id] = queue
-  var p = new Packet(packet)
+  const p = new Packet(packet)
   queue[queue.length] = p
 }
 
 MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
-  var i
-  var clientId = client.id
-  var outgoing = this._outgoing[clientId] || []
+  const clientId = client.id
+  const outgoing = this._outgoing[clientId] || []
   var temp
 
   this._outgoing[clientId] = outgoing
 
-  for (i = 0; i < outgoing.length; i++) {
+  for (var i = 0; i < outgoing.length; i++) {
     temp = outgoing[i]
     if (temp.brokerId === packet.brokerId) {
       if (temp.brokerCounter === packet.brokerCounter) {
@@ -221,14 +220,13 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
 }
 
 MemoryPersistence.prototype.outgoingClearMessageId = function (client, packet, cb) {
-  var i
-  var clientId = client.id
-  var outgoing = this._outgoing[clientId] || []
+  const clientId = client.id
+  const outgoing = this._outgoing[clientId] || []
   var temp
 
   this._outgoing[clientId] = outgoing
 
-  for (i = 0; i < outgoing.length; i++) {
+  for (var i = 0; i < outgoing.length; i++) {
     temp = outgoing[i]
     if (temp.messageId === packet.messageId) {
       outgoing.splice(i, 1)
@@ -240,7 +238,7 @@ MemoryPersistence.prototype.outgoingClearMessageId = function (client, packet, c
 }
 
 MemoryPersistence.prototype.outgoingStream = function (client) {
-  var queue = [].concat(this._outgoing[client.id] || [])
+  const queue = [].concat(this._outgoing[client.id] || [])
 
   return from2.obj(function match (size, next) {
     var entry
@@ -255,8 +253,8 @@ MemoryPersistence.prototype.outgoingStream = function (client) {
 }
 
 MemoryPersistence.prototype.incomingStorePacket = function (client, packet, cb) {
-  var id = client.id
-  var store = this._incoming[id] || {}
+  const id = client.id
+  const store = this._incoming[id] || {}
 
   this._incoming[id] = store
 
@@ -267,8 +265,8 @@ MemoryPersistence.prototype.incomingStorePacket = function (client, packet, cb) 
 }
 
 MemoryPersistence.prototype.incomingGetPacket = function (client, packet, cb) {
-  var id = client.id
-  var store = this._incoming[id] || {}
+  const id = client.id
+  const store = this._incoming[id] || {}
   var err = null
 
   this._incoming[id] = store
@@ -281,9 +279,9 @@ MemoryPersistence.prototype.incomingGetPacket = function (client, packet, cb) {
 }
 
 MemoryPersistence.prototype.incomingDelPacket = function (client, packet, cb) {
-  var id = client.id
-  var store = this._incoming[id] || {}
-  var toDelete = store[packet.messageId]
+  const id = client.id
+  const store = this._incoming[id] || {}
+  const toDelete = store[packet.messageId]
   var err = null
 
   if (!toDelete) {
@@ -307,14 +305,14 @@ MemoryPersistence.prototype.getWill = function (client, cb) {
 }
 
 MemoryPersistence.prototype.delWill = function (client, cb) {
-  var will = this._wills[client.id]
+  const will = this._wills[client.id]
   delete this._wills[client.id]
   cb(null, will, client)
 }
 
 MemoryPersistence.prototype.streamWill = function (brokers) {
-  var clients = Object.keys(this._wills)
-  var wills = this._wills
+  const clients = Object.keys(this._wills)
+  const wills = this._wills
   brokers = brokers || {}
   return from2.obj(function match (size, next) {
     var entry
@@ -333,8 +331,8 @@ MemoryPersistence.prototype.streamWill = function (brokers) {
 }
 
 MemoryPersistence.prototype.getClientList = function (topic) {
-  var clientSubs = this._subscriptions
-  var entries = clientSubs.entries(clientSubs)
+  const clientSubs = this._subscriptions
+  const entries = clientSubs.entries(clientSubs)
   return from2.obj(function match (size, next) {
     var entry
     while (!(entry = entries.next()).done) {
