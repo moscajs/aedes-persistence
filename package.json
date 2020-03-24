@@ -60,14 +60,14 @@
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
     "license-checker": "^25.0.1",
-    "mqemitter": "^4.1.1",
+    "mqemitter": "^4.1.2",
     "nyc": "^15.0.0",
     "pre-commit": "^1.2.2",
     "pump": "^3.0.0",
-    "release-it": "^12.6.1",
+    "release-it": "^13.3.0",
     "snazzy": "^8.0.0",
-    "standard": "^14.3.1",
-    "tape": "^4.13.0",
+    "standard": "^14.3.3",
+    "tape": "^4.13.2",
     "through2": "^3.0.1"
   },
   "dependencies": {
