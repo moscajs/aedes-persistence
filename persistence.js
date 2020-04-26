@@ -113,7 +113,7 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
       const qos = stored.get(topic)
       if (qos !== undefined) {
         if (qos > 0) {
-          trie.remove(topic, { clientId: client.id, topic: topic })
+          trie.remove(topic, { clientId: client.id, topic })
         }
         stored.delete(topic)
       }
@@ -156,7 +156,7 @@ MemoryPersistence.prototype.cleanSubscriptions = function (client, cb) {
     for (const topicAndQos of stored) {
       if (topicAndQos[1] > 0) {
         const topic = topicAndQos[0]
-        trie.remove(topic, { clientId: client.id, topic: topic })
+        trie.remove(topic, { clientId: client.id, topic })
       }
     }
 
