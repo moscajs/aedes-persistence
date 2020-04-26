@@ -5,6 +5,6 @@ const memory = require('./')
 const abs = require('./abstract')
 
 abs({
-  test: test,
+  test,
   persistence: memory
 })

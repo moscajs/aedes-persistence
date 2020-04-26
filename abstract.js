@@ -24,7 +24,7 @@ function abstractPersistence (opts) {
     const mq = buildEmitter()
     const broker = {
       id: 'broker-42',
-      mq: mq,
+      mq,
       publish: mq.emit.bind(mq),
       subscribe: mq.on.bind(mq),
       unsubscribe: mq.removeListener.bind(mq),
@@ -505,8 +505,8 @@ function abstractPersistence (opts) {
   testInstance('replace subscriptions', function (t, instance) {
     const client = { id: 'abcde' }
     const topic = 'hello'
-    const sub = { topic: topic }
-    const subByTopic = { clientId: client.id, topic: topic }
+    const sub = { topic }
+    const subByTopic = { clientId: client.id, topic }
 
     function check (qos, cb) {
       sub.qos = subByTopic.qos = qos
@@ -551,18 +551,18 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const topic = 'hello'
     const subs = [
-      { topic: topic, qos: 0 },
-      { topic: topic, qos: 1 },
-      { topic: topic, qos: 2 },
-      { topic: topic, qos: 1 },
-      { topic: topic, qos: 0 }
+      { topic, qos: 0 },
+      { topic, qos: 1 },
+      { topic, qos: 2 },
+      { topic, qos: 1 },
+      { topic, qos: 0 }
     ]
     instance.addSubscriptions(client, subs, function (err, reClient) {
       t.equal(reClient, client, 'client must be the same')
       t.error(err, 'no error')
       instance.subscriptionsByClient(client, function (err, subsForClient, client) {
         t.error(err, 'no error')
-        t.deepEqual(subsForClient, [{ topic: topic, qos: 0 }])
+        t.deepEqual(subsForClient, [{ topic, qos: 0 }])
         instance.subscriptionsByTopic(topic, function (err, subsForTopic) {
           t.error(err, 'no error')
           t.deepEqual(subsForTopic, [])
@@ -706,7 +706,7 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const topic = 'hello'
     const subs = [{
-      topic: topic,
+      topic,
       qos: 1
     }]
 
@@ -731,7 +731,7 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const topic = 'hello'
     const subs = [{
-      topic: topic,
+      topic,
       qos: 0
     }]
 
