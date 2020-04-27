@@ -67,7 +67,7 @@
     "release-it": "^13.3.0",
     "snazzy": "^8.0.0",
     "standard": "^14.3.3",
-    "tape": "^4.13.2",
+    "tape": "^5.0.0",
     "through2": "^3.0.1"
   },
   "dependencies": {
