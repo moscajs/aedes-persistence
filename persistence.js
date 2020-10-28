@@ -243,7 +243,7 @@ MemoryPersistence.prototype.outgoingStream = function (client) {
   return from2.obj(function match (size, next) {
     var entry
 
-    while ((entry = queue.shift()) != null) {
+    if ((entry = queue.shift()) != null) {
       setImmediate(next, null, entry)
       return
     }
