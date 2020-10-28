@@ -5,6 +5,7 @@
   "main": "persistence.js",
   "scripts": {
     "lint": "standard --verbose | snazzy",
+    "lint-fix": "standard --fix",
     "unit": "tape test.js | faucet",
     "test": "npm run lint && npm run unit",
     "coverage": "nyc --reporter=lcov tape test.js",
@@ -60,19 +61,19 @@
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
     "license-checker": "^25.0.1",
-    "mqemitter": "^4.1.2",
-    "nyc": "^15.0.1",
+    "mqemitter": "^4.4.0",
+    "nyc": "^15.1.0",
     "pre-commit": "^1.2.2",
     "pump": "^3.0.0",
-    "release-it": "^14.0.3",
+    "release-it": "^14.2.0",
     "snazzy": "^9.0.0",
-    "standard": "^14.3.3",
+    "standard": "^15.0.1",
     "tape": "^4.13.2",
-    "through2": "^4.0.1"
+    "through2": "^4.0.2"
   },
   "dependencies": {
     "aedes-packet": "^2.3.1",
     "from2": "^2.3.0",
-    "qlobber": "^5.0.0"
+    "qlobber": "^5.0.3"
   }
 }
