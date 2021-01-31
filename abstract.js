@@ -767,6 +767,7 @@ function abstractPersistence (opts) {
       if (!--calls) {
         instance.subscriptionsByClient(client, function (err, resubs) {
           t.notOk(err, 'no error')
+          resubs.sort((a, b) => b.topic.localeCompare(b.topic, 'en'))
           t.deepEqual(resubs, [subs1[0], subs2[0]])
           instance.destroy(t.end.bind(t))
         })
