@@ -1,8 +1,6 @@
+import type { Client } from 'aedes';
 import type { AedesPacket } from 'aedes-packet';
-import type { IncomingMessage } from 'http';
-import type { Socket } from 'net';
-import type { Duplex, Readable } from 'stream';
-import type { EventEmitter } from 'events';
+import type { Readable } from 'stream';
 
 export type { AedesPacket as Packet } from 'aedes-packet';
 
@@ -18,27 +16,22 @@ export interface Brokers {
   };
 }
 
-type Connection = Duplex | Socket;
-
-interface Client extends EventEmitter {
-  id: string;
-  clean: boolean;
-  version: number;
-  conn: Connection;
-  req?: IncomingMessage;
-  connecting: boolean;
-  connected: boolean;
-  closed: boolean;
+interface WillPacket extends AedesPacket {
+  [key: string]: any;
 }
 
-declare class MemoryPersistence {
-  private _retained: any[];
+interface Incoming {
+  [clientId: string]: { [messageId: string]: AedesPacket };
+}
+
+declare class AedesMemoryPersistence {
+  private _retained: AedesPacket[];
   private _subscriptions: Map<string, AedesPersistenceSubscription>;
   private _clientsCount: number;
-  private _trie : any
-  private _outgoing: Record<string, AedesPacket>;
-  private _incoming: Record<string, AedesPacket>;
-  private _wills: Record<string, any>;
+  private _trie: any;
+  private _outgoing: Record<string, AedesPacket[]>;
+  private _incoming: Incoming;
+  private _wills: Record<string, WillPacket>;
 
   constructor();
 
@@ -154,7 +147,7 @@ declare class MemoryPersistence {
 
   getClientList: (topic: string) => Readable;
 
-  destroy: () => void;
+  destroy: (cb?: () => void) => void;
 }
 
-export default function memoryPersistence(): MemoryPersistence;
+export default function aedesMemoryPersistence(): AedesMemoryPersistence;
