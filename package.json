@@ -3,6 +3,7 @@
   "version": "8.1.2",
   "description": "The spec for an Aedes persistence, with abstract tests and a fast in-memory implementation.",
   "main": "persistence.js",
+  "types": "types/index.d.ts",
   "scripts": {
     "lint": "standard --verbose | snazzy",
     "lint-fix": "standard --fix",
