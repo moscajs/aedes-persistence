@@ -16,15 +16,15 @@ export interface Brokers {
   };
 }
 
-interface WillPacket extends AedesPacket {
-  [key: string]: any;
-}
+export type CallbackError = Error | null | undefined;
+
+export type WillPacket = AedesPacket & { [key: string]: any };
 
 interface Incoming {
   [clientId: string]: { [messageId: string]: AedesPacket };
 }
 
-declare class AedesMemoryPersistence {
+export class AedesMemoryPersistence {
   private _retained: AedesPacket[];
   private _subscriptions: Map<string, AedesPersistenceSubscription>;
   private _clientsCount: number;
@@ -37,7 +37,7 @@ declare class AedesMemoryPersistence {
 
   storeRetained: (
     packet: AedesPacket,
-    cb: (error: Error | null) => void
+    cb: (error: CallbackError) => void
   ) => void;
 
   createRetainedStream: (pattern: string) => Readable;
@@ -47,19 +47,19 @@ declare class AedesMemoryPersistence {
   addSubscriptions: (
     client: Client,
     subs: AedesPersistenceSubscription[],
-    cb: (error: Error | null, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void
   ) => void;
 
   removeSubscriptions: (
     client: Client,
     subs: AedesPersistenceSubscription[],
-    cb: (error: Error | null, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void
   ) => void;
 
   subscriptionsByClient: (
     client: Client,
     cb: (
-      error: Error | null,
+      error: CallbackError,
       subs: AedesPersistenceSubscription[],
       client: Client
     ) => void
@@ -67,7 +67,7 @@ declare class AedesMemoryPersistence {
 
   countOffline: (
     cb: (
-      error: Error | null,
+      error: CallbackError,
       subscriptionsCount: number,
       clientsCount: number
     ) => void
@@ -75,36 +75,36 @@ declare class AedesMemoryPersistence {
 
   subscriptionsByTopic: (
     pattern: string,
-    cb: (error: Error | null, subs: AedesPersistenceSubscription[]) => void
+    cb: (error: CallbackError, subs: AedesPersistenceSubscription[]) => void
   ) => void;
 
   cleanSubscriptions: (
     client: Client,
-    cb: (error: Error | null, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void
   ) => void;
 
   outgoingEnqueue: (
     sub: AedesPersistenceSubscription,
     packet: AedesPacket,
-    cb: (error: Error | null) => void
+    cb: (error: CallbackError) => void
   ) => void;
 
   outgoingEnqueueCombi: (
     subs: AedesPersistenceSubscription[],
     packet: AedesPacket,
-    cb: (error: Error | null) => void
+    cb: (error: CallbackError) => void
   ) => void;
 
   outgoingUpdate: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: Error | null, client: Client, packet: AedesPacket) => void
+    cb: (error: CallbackError, client: Client, packet: AedesPacket) => void
   ) => void;
 
   outgoingClearMessageId: (
     client: Client,
     packet: AedesPacket,
-    cb: (error?: Error | null, packet?: AedesPacket) => void
+    cb: (error?: CallbackError, packet?: AedesPacket) => void
   ) => void;
 
   outgoingStream: (client: Client) => Readable;
@@ -112,35 +112,35 @@ declare class AedesMemoryPersistence {
   incomingStorePacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: Error | null) => void
+    cb: (error: CallbackError) => void
   ) => void;
 
   incomingGetPacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: Error | null, packet: AedesPacket) => void
+    cb: (error: CallbackError, packet: AedesPacket) => void
   ) => void;
 
   incomingDelPacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: Error | null) => void
+    cb: (error: CallbackError) => void
   ) => void;
 
   putWill: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: Error | null, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void
   ) => void;
 
   getWill: (
     client: Client,
-    cb: (error: Error | null, will: any, client: Client) => void
+    cb: (error: CallbackError, will: WillPacket, client: Client) => void
   ) => void;
 
   delWill: (
     client: Client,
-    cb: (error: Error | null, will: any, client: Client) => void
+    cb: (error: CallbackError, will: WillPacket, client: Client) => void
   ) => void;
 
   streamWill: (brokers: Brokers) => Readable;
