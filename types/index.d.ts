@@ -10,10 +10,10 @@ export interface AedesPersistenceSubscription {
   qos: number;
 }
 
+type LastHearthbeatTimestamp = Date;
+
 export interface Brokers {
-  [brokerId: string]: {
-    brokerId: string;
-  };
+  [brokerId: string]: LastHearthbeatTimestamp;
 }
 
 export type CallbackError = Error | null | undefined;
@@ -26,7 +26,7 @@ interface Incoming {
 
 export class AedesMemoryPersistence {
   private _retained: AedesPacket[];
-  private _subscriptions: Map<string, AedesPersistenceSubscription>;
+  private _subscriptions: Map<string, Map<string, number>>;
   private _clientsCount: number;
   private _trie: any;
   private _outgoing: Record<string, AedesPacket[]>;
