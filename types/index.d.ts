@@ -147,7 +147,7 @@ export class AedesMemoryPersistence {
 
   getClientList: (topic: string) => Readable;
 
-  destroy: (cb?: () => void) => void;
+  destroy: (cb?: (error: CallbackError) => void) => void;
 }
 
 export default function aedesMemoryPersistence(): AedesMemoryPersistence;
