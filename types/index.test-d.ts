@@ -1,5 +1,6 @@
-import type { Client } from 'aedes';
+import type { Client, Subscription } from 'aedes';
 import type { AedesPacket } from 'aedes-packet';
+import type { QoS } from 'mqtt-packet';
 import type { Readable } from 'stream';
 import { expectType } from 'tsd';
 import aedesMemoryPersistence, {
@@ -31,7 +32,7 @@ expectType<void>(
 expectType<void>(
   aedesMemoryPersistence().addSubscriptions(
     {} as Client,
-    [] as AedesPersistenceSubscription[],
+    [] as Subscription[],
     (err: CallbackError) => {}
   )
 );
@@ -39,7 +40,7 @@ expectType<void>(
 expectType<void>(
   aedesMemoryPersistence().removeSubscriptions(
     {} as Client,
-    [] as AedesPersistenceSubscription[],
+    [] as Subscription[],
     (err: CallbackError) => {}
   )
 );
@@ -49,7 +50,7 @@ expectType<void>(
     {} as Client,
     (
       error: CallbackError,
-      subs: AedesPersistenceSubscription[],
+      subs: { topic: string; qos: QoS }[],
       client: Client
     ) => {}
   )
@@ -81,7 +82,7 @@ expectType<void>(
 
 expectType<void>(
   aedesMemoryPersistence().outgoingEnqueue(
-    {} as AedesPersistenceSubscription,
+    {} as Subscription[],
     {} as AedesPacket,
     (error: CallbackError) => {}
   )
@@ -89,7 +90,7 @@ expectType<void>(
 
 expectType<void>(
   aedesMemoryPersistence().outgoingEnqueueCombi(
-    [] as AedesPersistenceSubscription[],
+    [] as Subscription[],
     {} as AedesPacket,
     (error: CallbackError) => {}
   )

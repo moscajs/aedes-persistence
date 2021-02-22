@@ -1,13 +1,14 @@
-import type { Client } from 'aedes';
+import type { Client, Subscription } from 'aedes';
 import type { AedesPacket } from 'aedes-packet';
+import type { QoS } from 'mqtt-packet';
 import type { Readable } from 'stream';
 
 export type { AedesPacket as Packet } from 'aedes-packet';
 
 export interface AedesPersistenceSubscription {
-  clientId?: string;
-  topic: string;
-  qos: number;
+  clientId: string;
+  topic: string,
+  qos?: QoS
 }
 
 type LastHearthbeatTimestamp = Date;
@@ -26,7 +27,13 @@ interface Incoming {
 
 export class AedesMemoryPersistence {
   private _retained: AedesPacket[];
-  private _subscriptions: Map<string, Map<string, number>>;
+  private _subscriptions: Map<
+    AedesPersistenceSubscription['clientId'],
+    Map<
+      AedesPersistenceSubscription['topic'],
+      AedesPersistenceSubscription['qos']
+    >
+  >;
   private _clientsCount: number;
   private _trie: any;
   private _outgoing: Record<string, AedesPacket[]>;
@@ -46,13 +53,13 @@ export class AedesMemoryPersistence {
 
   addSubscriptions: (
     client: Client,
-    subs: AedesPersistenceSubscription[],
+    subs: Subscription[],
     cb: (error: CallbackError, client: Client) => void
   ) => void;
 
   removeSubscriptions: (
     client: Client,
-    subs: AedesPersistenceSubscription[],
+    subs: Subscription[],
     cb: (error: CallbackError, client: Client) => void
   ) => void;
 
@@ -60,7 +67,7 @@ export class AedesMemoryPersistence {
     client: Client,
     cb: (
       error: CallbackError,
-      subs: AedesPersistenceSubscription[],
+      subs: { topic: string; qos: QoS }[],
       client: Client
     ) => void
   ) => void;
@@ -84,13 +91,13 @@ export class AedesMemoryPersistence {
   ) => void;
 
   outgoingEnqueue: (
-    sub: AedesPersistenceSubscription,
+    sub: Subscription[],
     packet: AedesPacket,
     cb: (error: CallbackError) => void
   ) => void;
 
   outgoingEnqueueCombi: (
-    subs: AedesPersistenceSubscription[],
+    subs: Subscription[],
     packet: AedesPacket,
     cb: (error: CallbackError) => void
   ) => void;
