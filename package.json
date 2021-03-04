@@ -60,7 +60,7 @@
     "node": ">=10"
   },
   "devDependencies": {
-    "aedes": "^0.44.2",
+    "aedes": "^0.45.0",
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
     "license-checker": "^25.0.1",

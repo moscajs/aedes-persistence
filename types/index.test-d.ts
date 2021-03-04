@@ -1,4 +1,4 @@
-import type { Client, Subscription } from 'aedes';
+import type { Brokers, Client, Subscription } from 'aedes';
 import type { AedesPacket } from 'aedes-packet';
 import type { QoS } from 'mqtt-packet';
 import type { Readable } from 'stream';
@@ -6,7 +6,6 @@ import { expectType } from 'tsd';
 import aedesMemoryPersistence, {
   AedesMemoryPersistence,
   AedesPersistenceSubscription,
-  Brokers,
   CallbackError,
   WillPacket,
 } from '.';
@@ -82,7 +81,7 @@ expectType<void>(
 
 expectType<void>(
   aedesMemoryPersistence().outgoingEnqueue(
-    {} as Subscription[],
+    { clientId: '' },
     {} as AedesPacket,
     (error: CallbackError) => {}
   )
@@ -90,7 +89,7 @@ expectType<void>(
 
 expectType<void>(
   aedesMemoryPersistence().outgoingEnqueueCombi(
-    [] as Subscription[],
+    [{ clientId: '' }],
     {} as AedesPacket,
     (error: CallbackError) => {}
   )
