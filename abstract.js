@@ -105,7 +105,7 @@ function abstractPersistence (opts) {
   function testPacket (t, packet, expected) {
     if (packet.messageId === null) packet.messageId = undefined
     t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-    t.deepEqual(packet, expected, 'must return the packet')
+    t.deepLooseEqual(packet, expected, 'must return the packet')
   }
 
   test('store and look up retained messages', function (t) {
@@ -1256,7 +1256,7 @@ function abstractPersistence (opts) {
         delete retrieved.brokerId
         delete packet.length
 
-        t.deepEqual(retrieved, packet, 'retrieved packet must be deeply equal')
+        t.deepLooseEqual(retrieved, packet, 'retrieved packet must be deeply equal')
         t.notEqual(retrieved, packet, 'retrieved packet must not be the same objet')
 
         instance.incomingDelPacket(client, retrieved, function (err) {
