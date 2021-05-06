@@ -200,6 +200,7 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
     if (temp.brokerId === packet.brokerId) {
       if (temp.brokerCounter === packet.brokerCounter) {
         temp.messageId = packet.messageId
+        temp.dup = packet.dup
         return cb(null, client, packet)
       }
       /*
