@@ -116,6 +116,38 @@ function abstractPersistence (opts) {
     matchRetainedWithPattern(t, ['hello/world', 'other/hello'])
   })
 
+  test('test matching multiple patterns with multiple stored messages', function (t) {
+    persistence(function (err, instance) {
+      if (err) { throw err }
+
+      storeRetained(instance, { topic: "t1", payload: "p1" }, function (err1, packet1) {
+        t.notOk(err1, 'no error')
+        storeRetained(instance, { topic: "t2", payload: "p2" }, function (err2, packet2) {
+          t.notOk(err2, 'no error')
+          storeRetained(instance, { topic: "t3", payload: "p3" }, function (err3, packet3) {
+            t.notOk(err3, 'no error')
+            storeRetained(instance, { topic: "t1/smth", payload: "p5" }, function (err4, packet4) {
+              t.notOk(err4, 'no error')
+              instance.createRetainedStreamCombi(['t2', 't5']).pipe(concat(function (list1) {
+                t.deepEqual(list1, [packet2], 'must return the packet')
+                instance.createRetainedStreamCombi(['t6', 't8', 't9']).pipe(concat(function (list2) {
+                  t.deepEqual(list2, [], 'must return the packet')
+                  instance.createRetainedStreamCombi(['t1', 't2']).pipe(concat(function (list3) {
+                    t.deepEqual(list3, [packet1, packet2], 'must return the packet')
+                    instance.createRetainedStreamCombi(['t3', 't2', 't1/smth', 'tt']).pipe(concat(function (list4) {
+                      t.deepEqual(list4, [packet3, packet2, packet4], 'must return the packet')
+                      instance.destroy(t.end.bind(t))
+                    }))
+                  }))
+                }))
+              }))
+            })
+          })
+        })
+      })
+    })
+  });
+
   testInstance('store multiple retained messages in order', function (t, instance) {
     const totalMessages = 1000
     var done = 0
