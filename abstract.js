@@ -112,18 +112,6 @@ function abstractPersistence (opts) {
     matchRetainedWithPattern(t, 'hello/world')
   })
 
-  // test('look up retained messages with a # pattern', function (t) {
-  //   matchRetainedWithPattern(t, '#')
-  // })
-
-  // test('look up retained messages with a hello/world/# pattern', function (t) {
-  //   matchRetainedWithPattern(t, 'hello/world/#')
-  // })
-
-  // test('look up retained messages with a + pattern', function (t) {
-  //   matchRetainedWithPattern(t, 'hello/+')
-  // })
-
   test('look up retained messages with multiple patterns', function (t) {
     matchRetainedWithPattern(t, ['hello/world', 'other/hello'])
   })
