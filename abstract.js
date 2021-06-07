@@ -275,10 +275,7 @@ function abstractPersistence (opts) {
     const subs = [{
       topic: 'hello',
       qos: 1
-    }, {
-      topic: 'hello/#',
-      qos: 1
-    }, {
+    },{
       topic: 'matteo',
       qos: 1
     }]
@@ -288,10 +285,6 @@ function abstractPersistence (opts) {
       instance.subscriptionsByTopic('hello', function (err, resubs) {
         t.notOk(err, 'no error')
         t.deepEqual(resubs, [{
-          clientId: client.id,
-          topic: 'hello/#',
-          qos: 1
-        }, {
           clientId: client.id,
           topic: 'hello',
           qos: 1
@@ -376,9 +369,6 @@ function abstractPersistence (opts) {
       topic: 'hello',
       qos: 0
     }, {
-      topic: 'hello/#',
-      qos: 1
-    }, {
       topic: 'matteo',
       qos: 1
     }]
@@ -390,11 +380,7 @@ function abstractPersistence (opts) {
         t.deepEqual(resubs, subs)
         instance.subscriptionsByTopic('hello', function (err, resubs2) {
           t.notOk(err, 'no error')
-          t.deepEqual(resubs2, [{
-            clientId: client.id,
-            topic: 'hello/#',
-            qos: 1
-          }])
+          t.deepEqual(resubs2, [])
           instance.destroy(t.end.bind(t))
         })
       })
