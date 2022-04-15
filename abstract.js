@@ -7,7 +7,7 @@ const Packet = require('aedes-packet')
 
 function abstractPersistence (opts) {
   const test = opts.test
-  var _persistence = opts.persistence
+  let _persistence = opts.persistence
   const waitForReady = opts.waitForReady
 
   // requiring it here so it will not error for modules
@@ -78,7 +78,7 @@ function abstractPersistence (opts) {
 
       storeRetained(instance, opts, function (err, packet) {
         t.notOk(err, 'no error')
-        var stream
+        let stream
         if (Array.isArray(pattern)) {
           stream = instance.createRetainedStreamCombi(pattern)
         } else {
@@ -130,7 +130,7 @@ function abstractPersistence (opts) {
 
   testInstance('store multiple retained messages in order', function (t, instance) {
     const totalMessages = 1000
-    var done = 0
+    let done = 0
 
     const retained = {
       cmd: 'publish',
@@ -761,7 +761,7 @@ function abstractPersistence (opts) {
       topic: 'hello2',
       qos: 1
     }]
-    var calls = 2
+    let calls = 2
 
     function done () {
       if (!--calls) {
@@ -821,7 +821,7 @@ function abstractPersistence (opts) {
       const stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
-        var packet = list[0]
+        const packet = list[0]
         testPacket(t, packet, expected)
         instance.destroy(t.end.bind(t))
       }))
@@ -873,12 +873,12 @@ function abstractPersistence (opts) {
       t.error(err)
       const stream = instance.outgoingStream(client)
       stream.pipe(concat(function (list) {
-        var packet = list[0]
+        const packet = list[0]
         testPacket(t, packet, expected)
 
         const stream2 = instance.outgoingStream(client2)
         stream2.pipe(concat(function (list) {
-          var packet = list[0]
+          const packet = list[0]
           testPacket(t, packet, expected)
           instance.destroy(t.end.bind(t))
         }))
@@ -973,7 +973,7 @@ function abstractPersistence (opts) {
       const stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
-        var packet = list[0]
+        const packet = list[0]
         testPacket(t, packet, expected)
         instance.destroy(t.end.bind(t))
       }))
@@ -1018,13 +1018,13 @@ function abstractPersistence (opts) {
       const stream = instance.outgoingStream(client)
 
       stream.pipe(concat(function (list) {
-        var packet = list[0]
+        const packet = list[0]
         testPacket(t, packet, expected)
 
         const stream = instance.outgoingStream(client)
 
         stream.pipe(concat(function (list) {
-          var packet = list[0]
+          const packet = list[0]
           testPacket(t, packet, expected)
           t.notEqual(packet, expected, 'packet must be a different object')
           instance.destroy(t.end.bind(t))
