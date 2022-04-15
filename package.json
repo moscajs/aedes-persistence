@@ -60,6 +60,7 @@
     "node": ">=10"
   },
   "devDependencies": {
+    "@types/node": "^17.0.24",
     "aedes": "^0.45.0",
     "concat-stream": "^2.0.0",
     "faucet": "0.0.1",
