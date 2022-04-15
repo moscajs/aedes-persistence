@@ -42,7 +42,7 @@ function matchingStream (current, pattern) {
   const matcher = new QlobberTrue(QlobberOpts)
 
   if (Array.isArray(pattern)) {
-    for (var i = 0; i < pattern.length; i += 1) {
+    for (let i = 0; i < pattern.length; i += 1) {
       matcher.add(pattern[i])
     }
   } else {
@@ -50,7 +50,7 @@ function matchingStream (current, pattern) {
   }
 
   return from2.obj(function match (size, next) {
-    var entry
+    let entry
 
     while ((entry = current.shift()) != null) {
       if (matcher.test(entry.topic)) {
@@ -72,7 +72,7 @@ MemoryPersistence.prototype.createRetainedStreamCombi = function (patterns) {
 }
 
 MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
-  var stored = this._subscriptions.get(client.id)
+  let stored = this._subscriptions.get(client.id)
   const trie = this._trie
 
   if (!stored) {
@@ -81,7 +81,7 @@ MemoryPersistence.prototype.addSubscriptions = function (client, subs, cb) {
     this._clientsCount++
   }
 
-  for (var i = 0; i < subs.length; i += 1) {
+  for (let i = 0; i < subs.length; i += 1) {
     const sub = subs[i]
     const qos = stored.get(sub.topic)
     const hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
@@ -108,7 +108,7 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
   const trie = this._trie
 
   if (stored) {
-    for (var i = 0; i < subs.length; i += 1) {
+    for (let i = 0; i < subs.length; i += 1) {
       const topic = subs[i]
       const qos = stored.get(topic)
       if (qos !== undefined) {
@@ -129,7 +129,7 @@ MemoryPersistence.prototype.removeSubscriptions = function (client, subs, cb) {
 }
 
 MemoryPersistence.prototype.subscriptionsByClient = function (client, cb) {
-  var subs = null
+  let subs = null
   const stored = this._subscriptions.get(client.id)
   if (stored) {
     subs = []
@@ -173,7 +173,7 @@ MemoryPersistence.prototype.outgoingEnqueue = function (sub, packet, cb) {
 }
 
 MemoryPersistence.prototype.outgoingEnqueueCombi = function (subs, packet, cb) {
-  for (var i = 0; i < subs.length; i++) {
+  for (let i = 0; i < subs.length; i++) {
     _outgoingEnqueue.call(this, subs[i], packet)
   }
   process.nextTick(cb)
@@ -191,11 +191,11 @@ function _outgoingEnqueue (sub, packet) {
 MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
   const clientId = client.id
   const outgoing = this._outgoing[clientId] || []
-  var temp
+  let temp
 
   this._outgoing[clientId] = outgoing
 
-  for (var i = 0; i < outgoing.length; i++) {
+  for (let i = 0; i < outgoing.length; i++) {
     temp = outgoing[i]
     if (temp.brokerId === packet.brokerId) {
       if (temp.brokerCounter === packet.brokerCounter) {
@@ -222,11 +222,11 @@ MemoryPersistence.prototype.outgoingUpdate = function (client, packet, cb) {
 MemoryPersistence.prototype.outgoingClearMessageId = function (client, packet, cb) {
   const clientId = client.id
   const outgoing = this._outgoing[clientId] || []
-  var temp
+  let temp
 
   this._outgoing[clientId] = outgoing
 
-  for (var i = 0; i < outgoing.length; i++) {
+  for (let i = 0; i < outgoing.length; i++) {
     temp = outgoing[i]
     if (temp.messageId === packet.messageId) {
       outgoing.splice(i, 1)
@@ -241,7 +241,7 @@ MemoryPersistence.prototype.outgoingStream = function (client) {
   const queue = [].concat(this._outgoing[client.id] || [])
 
   return from2.obj(function match (size, next) {
-    var entry
+    let entry
 
     if ((entry = queue.shift()) != null) {
       setImmediate(next, null, entry)
@@ -267,7 +267,7 @@ MemoryPersistence.prototype.incomingStorePacket = function (client, packet, cb) 
 MemoryPersistence.prototype.incomingGetPacket = function (client, packet, cb) {
   const id = client.id
   const store = this._incoming[id] || {}
-  var err = null
+  let err = null
 
   this._incoming[id] = store
 
@@ -282,7 +282,7 @@ MemoryPersistence.prototype.incomingDelPacket = function (client, packet, cb) {
   const id = client.id
   const store = this._incoming[id] || {}
   const toDelete = store[packet.messageId]
-  var err = null
+  let err = null
 
   if (!toDelete) {
     err = new Error('no such packet')
@@ -315,7 +315,7 @@ MemoryPersistence.prototype.streamWill = function (brokers) {
   const wills = this._wills
   brokers = brokers || {}
   return from2.obj(function match (size, next) {
-    var entry
+    let entry
 
     while ((entry = clients.shift()) != null) {
       if (!brokers[wills[entry].brokerId]) {
@@ -334,7 +334,7 @@ MemoryPersistence.prototype.getClientList = function (topic) {
   const clientSubs = this._subscriptions
   const entries = clientSubs.entries(clientSubs)
   return from2.obj(function match (size, next) {
-    var entry
+    let entry
     while (!(entry = entries.next()).done) {
       if (entry.value[1].has(topic)) {
         setImmediate(next, null, entry.value[0])
