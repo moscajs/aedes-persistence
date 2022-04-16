@@ -1,3 +1,4 @@
+const { Readable } = require('stream')
 const Packet = require('aedes-packet')
 
 function abstractPersistence (opts) {
@@ -50,16 +51,25 @@ function abstractPersistence (opts) {
     })
   }
 
+  // legacy third party streams are typically not iterable
+  function iterableStream (stream) {
+    if (typeof stream[Symbol.iterator] !== 'function') {
+      return new Readable({ objectMode: true }).wrap(stream)
+    }
+    return stream
+  }
+  // end of legacy third party streams support
+
   async function getArrayFromStream (stream) {
     const list = []
-    for await (const item of stream) {
+    for await (const item of iterableStream(stream)) {
       list.push(item)
     }
     return list
   }
 
   async function streamForEach (stream, fn) {
-    for await (const item of stream) {
+    for await (const item of iterableStream(stream)) {
       fn(item)
     }
   }
