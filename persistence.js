@@ -7,6 +7,7 @@ const QlobberOpts = {
   wildcard_some: '#',
   separator: '/'
 }
+const CREATE_ON_EMPTY = true
 
 function * multiIterables (iterables) {
   for (const iter of iterables) {
@@ -18,8 +19,8 @@ function * retainedMessagesByPattern (retained, pattern) {
   const qlobber = new QlobberTrue(QlobberOpts)
   qlobber.add(pattern)
 
-  for (const packet of retained) {
-    if (qlobber.test(packet.topic)) {
+  for (const [topic, packet] of retained) {
+    if (qlobber.test(topic)) {
       yield packet
     }
   }
@@ -43,14 +44,15 @@ function * clientListbyTopic (subscriptions, topic) {
 
 class MemoryPersistence {
   constructor () {
-    // [ retainedPacket ]
-    this._retained = []
-    // Map( clientId -> Map( topic -> qos ))
+    // using Maps for convenience and security (risk on prototype polution)
+    // Map ( topic -> packet )
+    this._retained = new Map()
+    // Map ( clientId -> Map( topic -> qos ))
     this._subscriptions = new Map()
-    // { clientId  > [ packet ] }
-    this._outgoing = {}
-    // { clientId -> { packetId -> Packet } }
-    this._incoming = {}
+    // Map ( clientId  > [ packet ] }
+    this._outgoing = new Map()
+    // Map ( clientId -> { packetId -> Packet } )
+    this._incoming = new Map()
     // Map( clientId -> will )
     this._wills = new Map()
     this._clientsCount = 0
@@ -59,10 +61,11 @@ class MemoryPersistence {
 
   storeRetained (pkt, cb) {
     const packet = Object.assign({}, pkt)
-    this._retained = this._retained.filter(matchTopic, packet)
-
-    if (packet.payload.length > 0) { this._retained.push(packet) }
-
+    if (packet.payload.length === 0) {
+      this._retained.delete(packet.topic)
+    } else {
+      this._retained.set(packet.topic, packet)
+    }
     cb(null)
   }
 
@@ -184,12 +187,9 @@ class MemoryPersistence {
   }
 
   outgoingUpdate (client, packet, cb) {
-    const clientId = client.id
-    const outgoing = this._outgoing[clientId] || []
+    const outgoing = getMapRef(this._outgoing, client.id, [], CREATE_ON_EMPTY)
+
     let temp
-
-    this._outgoing[clientId] = outgoing
-
     for (let i = 0; i < outgoing.length; i++) {
       temp = outgoing[i]
       if (temp.brokerId === packet.brokerId) {
@@ -215,12 +215,9 @@ class MemoryPersistence {
   }
 
   outgoingClearMessageId (client, packet, cb) {
-    const clientId = client.id
-    const outgoing = this._outgoing[clientId] || []
+    const outgoing = getMapRef(this._outgoing, client.id, [], CREATE_ON_EMPTY)
+
     let temp
-
-    this._outgoing[clientId] = outgoing
-
     for (let i = 0; i < outgoing.length; i++) {
       temp = outgoing[i]
       if (temp.messageId === packet.messageId) {
@@ -233,14 +230,12 @@ class MemoryPersistence {
   }
 
   outgoingStream (client) {
-    return Readable.from(this._outgoing[client.id] || [])
+    return Readable.from(getMapRef(this._outgoing, client.id, []))
   }
 
   incomingStorePacket (client, packet, cb) {
     const id = client.id
-    const store = this._incoming[id] || {}
-
-    this._incoming[id] = store
+    const store = getMapRef(this._incoming, id, {}, CREATE_ON_EMPTY)
 
     store[packet.messageId] = new Packet(packet)
     store[packet.messageId].messageId = packet.messageId
@@ -250,10 +245,10 @@ class MemoryPersistence {
 
   incomingGetPacket (client, packet, cb) {
     const id = client.id
-    const store = this._incoming[id] || {}
+    const store = getMapRef(this._incoming, id, {})
     let err = null
 
-    this._incoming[id] = store
+    this._incoming.set(id, store)
 
     if (!store[packet.messageId]) {
       err = new Error('no such packet')
@@ -264,7 +259,7 @@ class MemoryPersistence {
 
   incomingDelPacket (client, packet, cb) {
     const id = client.id
-    const store = this._incoming[id] || {}
+    const store = getMapRef(this._incoming, id, {})
     const toDelete = store[packet.messageId]
     let err = null
 
@@ -310,17 +305,19 @@ class MemoryPersistence {
   }
 }
 
-function matchTopic (p) {
-  return p.topic !== this.topic
-}
-
 function _outgoingEnqueue (sub, packet) {
   const id = sub.clientId
-  const queue = this._outgoing[id] || []
+  const queue = getMapRef(this._outgoing, id, [], CREATE_ON_EMPTY)
+  queue[queue.length] = new Packet(packet)
+}
 
-  this._outgoing[id] = queue
-  const p = new Packet(packet)
-  queue[queue.length] = p
+function getMapRef (map, key, ifEmpty, createOnEmpty = false) {
+  let value = map.get(key)
+  if (value === undefined && createOnEmpty) {
+    value = ifEmpty
+    map.set(key, value)
+  }
+  return value
 }
 
 module.exports = () => { return new MemoryPersistence() }
