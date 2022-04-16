@@ -1,4 +1,4 @@
-const from2 = require('from2')
+const { Readable } = require('stream')
 const QlobberSub = require('qlobber/aedes/qlobber-sub')
 const { QlobberTrue } = require('qlobber')
 const Packet = require('aedes-packet')
@@ -8,20 +8,57 @@ const QlobberOpts = {
   separator: '/'
 }
 
+function * multiIterables (iterables) {
+  for (const iter of iterables) {
+    yield * iter
+  }
+}
+
+function * retainedMessagesByPattern (retained, pattern) {
+  const qlobber = new QlobberTrue(QlobberOpts)
+  qlobber.add(pattern)
+
+  for (const packet of retained) {
+    if (qlobber.test(packet.topic)) {
+      yield packet
+    }
+  }
+}
+
+function * willsByBrokers (wills, brokers) {
+  for (const will of wills.values()) {
+    if (!brokers[will.brokerId]) {
+      yield will
+    }
+  }
+}
+
+function * clientListbyTopic (subscriptions, topic) {
+  for (const [clientId, topicMap] of subscriptions) {
+    if (topicMap.has(topic)) {
+      yield clientId
+    }
+  }
+}
+
 class MemoryPersistence {
   constructor () {
+    // [ retainedPacket ]
     this._retained = []
-    // clientId -> topic -> qos
+    // Map( clientId -> Map( topic -> qos ))
     this._subscriptions = new Map()
+    // { clientId  > [ packet ] }
+    this._outgoing = {}
+    // { clientId -> { packetId -> Packet } }
+    this._incoming = {}
+    // Map( clientId -> will )
+    this._wills = new Map()
     this._clientsCount = 0
     this._trie = new QlobberSub(QlobberOpts)
-    this._outgoing = {}
-    this._incoming = {}
-    this._wills = {}
   }
 
-  storeRetained (packet, cb) {
-    packet = Object.assign({}, packet)
+  storeRetained (pkt, cb) {
+    const packet = Object.assign({}, pkt)
     this._retained = this._retained.filter(matchTopic, packet)
 
     if (packet.payload.length > 0) { this._retained.push(packet) }
@@ -29,12 +66,15 @@ class MemoryPersistence {
     cb(null)
   }
 
-  createRetainedStream (pattern) {
-    return matchingStream([].concat(this._retained), pattern)
+  createRetainedStreamCombi (patterns) {
+    const iterables = patterns.map((p) => {
+      return retainedMessagesByPattern(this._retained, p)
+    })
+    return Readable.from(multiIterables(iterables))
   }
 
-  createRetainedStreamCombi (patterns) {
-    return matchingStream([].concat(this._retained), patterns)
+  createRetainedStream (pattern) {
+    return Readable.from(retainedMessagesByPattern(this._retained, pattern))
   }
 
   addSubscriptions (client, subs, cb) {
@@ -193,18 +233,7 @@ class MemoryPersistence {
   }
 
   outgoingStream (client) {
-    const queue = [].concat(this._outgoing[client.id] || [])
-
-    return from2.obj(function match (size, next) {
-      let entry
-
-      if ((entry = queue.shift()) != null) {
-        setImmediate(next, null, entry)
-        return
-      }
-
-      if (!entry) { this.push(null) }
-    })
+    return Readable.from(this._outgoing[client.id] || [])
   }
 
   incomingStorePacket (client, packet, cb) {
@@ -251,53 +280,26 @@ class MemoryPersistence {
   putWill (client, packet, cb) {
     packet.brokerId = this.broker.id
     packet.clientId = client.id
-    this._wills[client.id] = packet
+    this._wills.set(client.id, packet)
     cb(null, client)
   }
 
   getWill (client, cb) {
-    cb(null, this._wills[client.id], client)
+    cb(null, this._wills.get(client.id), client)
   }
 
   delWill (client, cb) {
-    const will = this._wills[client.id]
-    delete this._wills[client.id]
+    const will = this._wills.get(client.id)
+    this._wills.delete(client.id)
     cb(null, will, client)
   }
 
-  streamWill (brokers) {
-    const clients = Object.keys(this._wills)
-    const wills = this._wills
-    brokers = brokers || {}
-    return from2.obj(function match (size, next) {
-      let entry
-
-      while ((entry = clients.shift()) != null) {
-        if (!brokers[wills[entry].brokerId]) {
-          setImmediate(next, null, wills[entry])
-          return
-        }
-      }
-
-      if (!entry) {
-        this.push(null)
-      }
-    })
+  streamWill (brokers = {}) {
+    return Readable.from(willsByBrokers(this._wills, brokers))
   }
 
   getClientList (topic) {
-    const clientSubs = this._subscriptions
-    const entries = clientSubs.entries(clientSubs)
-    return from2.obj(function match (size, next) {
-      let entry
-      while (!(entry = entries.next()).done) {
-        if (entry.value[1].has(topic)) {
-          setImmediate(next, null, entry.value[0])
-          return
-        }
-      }
-      next(null, null)
-    })
+    return Readable.from(clientListbyTopic(this._subscriptions, topic))
   }
 
   destroy (cb) {
@@ -312,31 +314,6 @@ function matchTopic (p) {
   return p.topic !== this.topic
 }
 
-function matchingStream (current, pattern) {
-  const matcher = new QlobberTrue(QlobberOpts)
-
-  if (Array.isArray(pattern)) {
-    for (let i = 0; i < pattern.length; i += 1) {
-      matcher.add(pattern[i])
-    }
-  } else {
-    matcher.add(pattern)
-  }
-
-  return from2.obj(function match (size, next) {
-    let entry
-
-    while ((entry = current.shift()) != null) {
-      if (matcher.test(entry.topic)) {
-        setImmediate(next, null, entry)
-        return
-      }
-    }
-
-    if (!entry) this.push(null)
-  })
-}
-
 function _outgoingEnqueue (sub, packet) {
   const id = sub.clientId
   const queue = this._outgoing[id] || []
@@ -347,5 +324,4 @@ function _outgoingEnqueue (sub, packet) {
 }
 
 module.exports = () => { return new MemoryPersistence() }
-module.exports.MemoryPersistence = MemoryPersistence
 module.exports.Packet = Packet
