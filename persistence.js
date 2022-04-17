@@ -312,12 +312,11 @@ function _outgoingEnqueue (sub, packet) {
 }
 
 function getMapRef (map, key, ifEmpty, createOnEmpty = false) {
-  let value = map.get(key)
+  const value = map.get(key)
   if (value === undefined && createOnEmpty) {
-    value = ifEmpty
-    map.set(key, value)
+    map.set(key, ifEmpty)
   }
-  return value
+  return value || ifEmpty
 }
 
 module.exports = () => { return new MemoryPersistence() }
