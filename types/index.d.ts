@@ -1,13 +1,25 @@
-import type { Brokers, Client, Subscription } from 'aedes';
-import type { AedesPacket } from 'aedes-packet';
-import type { QoS } from 'mqtt-packet';
-import type { Readable } from 'stream';
+import type { Brokers, Client, Subscription } from "aedes";
+import type { AedesPacket } from "aedes-packet";
+import type { Readable } from "stream";
 
-export type { AedesPacket as Packet } from 'aedes-packet';
+export type { AedesPacket as Packet } from "aedes-packet";
+
+type ClientId = Subscription["clientId"];
+type MessageId = AedesPacket["messageId"];
+type Topic = Subscription["topic"];
+type TopicPattern = Subscription["topic"];
+type QoS = Subscription["qos"];
+
+type Incoming = {
+  // tsc accepts:
+  // [messageId: MessageId]: AedesPacket;
+  // Workaround for tsd 0.20:
+  [messageId: number]: AedesPacket;
+};
 
 export interface AedesPersistenceSubscription {
-  clientId: string;
-  topic: string;
+  clientId: ClientId;
+  topic: Topic;
   qos?: QoS;
 }
 
@@ -15,81 +27,77 @@ export type CallbackError = Error | null | undefined;
 
 export type WillPacket = AedesPacket & { [key: string]: any };
 
-interface Incoming {
-  [clientId: string]: { [messageId: string]: AedesPacket };
-}
-
 export interface AedesPersistence {
   storeRetained: (
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
-  createRetainedStream: (pattern: string) => Readable;
+  createRetainedStream: (pattern: TopicPattern) => Readable;
 
-  createRetainedStreamCombi: (patterns: string[]) => Readable;
+  createRetainedStreamCombi: (patterns: TopicPattern[]) => Readable;
 
   addSubscriptions: (
     client: Client,
     subs: Subscription[],
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   removeSubscriptions: (
     client: Client,
     subs: Subscription[],
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   subscriptionsByClient: (
     client: Client,
     cb: (
       error: CallbackError,
-      subs: { topic: string; qos: QoS }[],
-      client: Client
-    ) => void
+      subs: { topic: Topic; qos: QoS }[],
+      client: Client,
+    ) => void,
   ) => void;
 
   countOffline: (
     cb: (
       error: CallbackError,
       subscriptionsCount: number,
-      clientsCount: number
-    ) => void
+      clientsCount: number,
+    ) => void,
   ) => void;
 
   subscriptionsByTopic: (
-    pattern: string,
-    cb: (error: CallbackError, subs: AedesPersistenceSubscription[]) => void
+    pattern: TopicPattern,
+    cb: (error: CallbackError, subs: AedesPersistenceSubscription[]) => void,
   ) => void;
 
   cleanSubscriptions: (
     client: Client,
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   outgoingEnqueue: (
-    sub: { clientId: string },
+    sub: { clientId: ClientId },
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   outgoingEnqueueCombi: (
-    subs: { clientId: string }[],
+    subs: { clientId: ClientId }[],
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   outgoingUpdate: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError, client: Client, packet: AedesPacket) => void
+    cb: (error: CallbackError, client: Client, packet: AedesPacket) => void,
   ) => void;
 
   outgoingClearMessageId: (
     client: Client,
     packet: AedesPacket,
-    cb: (error?: CallbackError, packet?: AedesPacket) => void
+    cb: (error?: CallbackError, packet?: AedesPacket) => void,
   ) => void;
 
   outgoingStream: (client: Client) => Readable;
@@ -97,35 +105,35 @@ export interface AedesPersistence {
   incomingStorePacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   incomingGetPacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError, packet: AedesPacket) => void
+    cb: (error: CallbackError, packet: AedesPacket) => void,
   ) => void;
 
   incomingDelPacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   putWill: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   getWill: (
     client: Client,
-    cb: (error: CallbackError, will: WillPacket, client: Client) => void
+    cb: (error: CallbackError, will: WillPacket, client: Client) => void,
   ) => void;
 
   delWill: (
     client: Client,
-    cb: (error: CallbackError, will: WillPacket, client: Client) => void
+    cb: (error: CallbackError, will: WillPacket, client: Client) => void,
   ) => void;
 
   streamWill: (brokers: Brokers) => Readable;
@@ -136,41 +144,41 @@ export interface AedesPersistence {
 }
 
 export class AedesMemoryPersistence implements AedesPersistence {
-  _retained: AedesPacket[];
+  _retained: Map<Topic, AedesPacket>;
   _subscriptions: Map<
-    AedesPersistenceSubscription['clientId'],
+    ClientId,
     Map<
-      AedesPersistenceSubscription['topic'],
-      AedesPersistenceSubscription['qos']
+      Topic,
+      QoS
     >
   >;
   _clientsCount: number;
   _trie: any;
-  _outgoing: Record<string, AedesPacket[]>;
-  _incoming: Incoming;
-  _wills: Record<string, WillPacket>;
+  _outgoing: Map<ClientId, AedesPacket[]>;
+  _incoming: Map<ClientId, Incoming>;
+  _wills: Map<ClientId, WillPacket>;
 
   constructor();
 
   storeRetained: (
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
-  createRetainedStream: (pattern: string) => Readable;
+  createRetainedStream: (pattern: TopicPattern) => Readable;
 
-  createRetainedStreamCombi: (patterns: string[]) => Readable;
+  createRetainedStreamCombi: (patterns: TopicPattern[]) => Readable;
 
   addSubscriptions: (
     client: Client,
     subs: Subscription[],
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   removeSubscriptions: (
     client: Client,
     subs: Subscription[],
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   subscriptionsByClient: (
@@ -178,50 +186,50 @@ export class AedesMemoryPersistence implements AedesPersistence {
     cb: (
       error: CallbackError,
       subs: { topic: string; qos: QoS }[],
-      client: Client
-    ) => void
+      client: Client,
+    ) => void,
   ) => void;
 
   countOffline: (
     cb: (
       error: CallbackError,
       subscriptionsCount: number,
-      clientsCount: number
-    ) => void
+      clientsCount: number,
+    ) => void,
   ) => void;
 
   subscriptionsByTopic: (
     pattern: string,
-    cb: (error: CallbackError, subs: AedesPersistenceSubscription[]) => void
+    cb: (error: CallbackError, subs: AedesPersistenceSubscription[]) => void,
   ) => void;
 
   cleanSubscriptions: (
     client: Client,
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   outgoingEnqueue: (
-    sub: { clientId: string },
+    sub: { clientId: ClientId },
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   outgoingEnqueueCombi: (
-    sub: { clientId: string }[],
+    sub: { clientId: ClientId }[],
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   outgoingUpdate: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError, client: Client, packet: AedesPacket) => void
+    cb: (error: CallbackError, client: Client, packet: AedesPacket) => void,
   ) => void;
 
   outgoingClearMessageId: (
     client: Client,
     packet: AedesPacket,
-    cb: (error?: CallbackError, packet?: AedesPacket) => void
+    cb: (error?: CallbackError, packet?: AedesPacket) => void,
   ) => void;
 
   outgoingStream: (client: Client) => Readable;
@@ -229,35 +237,35 @@ export class AedesMemoryPersistence implements AedesPersistence {
   incomingStorePacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   incomingGetPacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError, packet: AedesPacket) => void
+    cb: (error: CallbackError, packet: AedesPacket) => void,
   ) => void;
 
   incomingDelPacket: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError) => void
+    cb: (error: CallbackError) => void,
   ) => void;
 
   putWill: (
     client: Client,
     packet: AedesPacket,
-    cb: (error: CallbackError, client: Client) => void
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   getWill: (
     client: Client,
-    cb: (error: CallbackError, will: WillPacket, client: Client) => void
+    cb: (error: CallbackError, will: WillPacket, client: Client) => void,
   ) => void;
 
   delWill: (
     client: Client,
-    cb: (error: CallbackError, will: WillPacket, client: Client) => void
+    cb: (error: CallbackError, will: WillPacket, client: Client) => void,
   ) => void;
 
   streamWill: (brokers: Brokers) => Readable;

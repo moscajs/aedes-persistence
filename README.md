@@ -265,9 +265,9 @@ A persistence needs to pass all tests defined in
 in the following manner:
 
 ```js
-var test = require('tape').test
-var myperst = require('./')
-var abs = require('aedes-persistence/abstract')
+const test = require('tape').test
+const myperst = require('./')
+const abs = require('aedes-persistence/abstract')
 
 abs({
   test: test,
@@ -279,10 +279,10 @@ If you require some async stuff before returning, a callback is also
 supported:
 
 ```js
-var test = require('tape').test
-var myperst = require('./')
-var abs = require('aedes-persistence/abstract')
-var clean = require('./clean') // invented module
+const test = require('tape').test
+const myperst = require('./')
+const abs = require('aedes-persistence/abstract')
+const clean = require('./clean') // invented module
 
 abs({
   test: test,
