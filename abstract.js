@@ -1,8 +1,6 @@
 const { Readable } = require('stream')
 const Packet = require('aedes-packet')
 
-const HIGH_WATERMARK = 64
-
 function abstractPersistence (opts) {
   const test = opts.test
   let _persistence = opts.persistence
@@ -1169,26 +1167,41 @@ function abstractPersistence (opts) {
       brokerCounter: 42
     }
 
-    const total = HIGH_WATERMARK
+    function outStream (instance, client) {
+      return iterableStream(instance.outgoingStream(client))
+    }
+
+    // we just need a stream to figure out the high watermark
+    const stream = outStream(instance, client)
+    const total = stream.readableHighWaterMark * 2
+
+    async function submitMessage (id) {
+      return new Promise((resolve, reject) => {
+        enqueueAndUpdate(t, instance, client, sub, packet, id, resolve)
+      })
+    }
+
     for (let i = 0; i < total; i++) {
-      enqueueAndUpdate(t, instance, client, sub, packet, i, () => { })
+      await submitMessage(i)
     }
 
     let queued = 0
-    for await (const p of instance.outgoingStream(client)) {
+    for await (const p of outStream(instance, client)) {
       if (p) {
         queued++
       }
     }
     t.equal(queued, total, `outgoing queue must hold ${total} items`)
-    for await (const p of instance.outgoingStream(client)) {
+
+    for await (const p of outStream(instance, client)) {
       instance.outgoingClearMessageId(client, p, (err, received) => {
         t.error(err)
         t.deepEqual(received, p, 'must return the packet')
       })
     }
+
     let queued2 = 0
-    for await (const p of instance.outgoingStream(client)) {
+    for await (const p of outStream(instance, client)) {
       if (p) {
         queued2++
       }
