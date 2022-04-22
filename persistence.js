@@ -230,7 +230,9 @@ class MemoryPersistence {
   }
 
   outgoingStream (client) {
-    return Readable.from(getMapRef(this._outgoing, client.id, []))
+    // shallow clone the outgoing queue for this client to avoid race conditions
+    const outgoing = [].concat(getMapRef(this._outgoing, client.id, []))
+    return Readable.from(outgoing)
   }
 
   incomingStorePacket (client, packet, cb) {
