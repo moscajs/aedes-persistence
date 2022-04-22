@@ -1,6 +1,8 @@
 const { Readable } = require('stream')
 const Packet = require('aedes-packet')
 
+const HIGH_WATERMARK = 64
+
 function abstractPersistence (opts) {
   const test = opts.test
   let _persistence = opts.persistence
@@ -1146,6 +1148,53 @@ function abstractPersistence (opts) {
         })
       })
     })
+  })
+
+  testInstance('add many outgoing packets and clear messageIds', async (t, instance) => {
+    const sub = {
+      clientId: 'abcde', topic: 'hello', qos: 1
+    }
+    const client = {
+      id: sub.clientId
+    }
+    const packet = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 1,
+      dup: false,
+      length: 14,
+      retain: false,
+      brokerId: instance.broker.id,
+      brokerCounter: 42
+    }
+
+    const total = HIGH_WATERMARK
+    for (let i = 0; i < total; i++) {
+      enqueueAndUpdate(t, instance, client, sub, packet, i, () => { })
+    }
+
+    let queued = 0
+    for await (const p of instance.outgoingStream(client)) {
+      if (p) {
+        queued++
+      }
+    }
+    t.equal(queued, total, `outgoing queue must hold ${total} items`)
+    for await (const p of instance.outgoingStream(client)) {
+      instance.outgoingClearMessageId(client, p, (err, received) => {
+        t.error(err)
+        t.deepEqual(received, p, 'must return the packet')
+      })
+    }
+    let queued2 = 0
+    for await (const p of instance.outgoingStream(client)) {
+      if (p) {
+        queued2++
+      }
+    }
+    t.equal(queued2, 0, 'outgoing queue is empty')
+    instance.destroy(t.end.bind(t))
   })
 
   testInstance('update to publish w/ same messageId', (t, instance) => {
