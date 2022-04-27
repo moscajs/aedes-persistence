@@ -144,19 +144,19 @@ export interface AedesPersistence {
 }
 
 export class AedesMemoryPersistence implements AedesPersistence {
-  _retained: Map<Topic, AedesPacket>;
-  _subscriptions: Map<
+  #retained: Map<Topic, AedesPacket>;
+  #subscriptions: Map<
     ClientId,
     Map<
       Topic,
       QoS
     >
   >;
-  _clientsCount: number;
-  _trie: any;
-  _outgoing: Map<ClientId, AedesPacket[]>;
-  _incoming: Map<ClientId, Incoming>;
-  _wills: Map<ClientId, WillPacket>;
+  #clientsCount: number;
+  #trie: any;
+  #outgoing: Map<ClientId, AedesPacket[]>;
+  #incoming: Map<ClientId, Incoming>;
+  #wills: Map<ClientId, WillPacket>;
 
   constructor();
 
@@ -206,6 +206,11 @@ export class AedesMemoryPersistence implements AedesPersistence {
   cleanSubscriptions: (
     client: Client,
     cb: (error: CallbackError, client: Client) => void,
+  ) => void;
+
+  #outgoingEnqueuePerSub: (
+    sub: { clientId: ClientId },
+    packet: AedesPacket,
   ) => void;
 
   outgoingEnqueue: (
