@@ -43,51 +43,60 @@ function * clientListbyTopic (subscriptions, topic) {
 }
 
 class MemoryPersistence {
+  // private class members start with #
+  #retained
+  #subscriptions
+  #outgoing
+  #incoming
+  #wills
+  #clientsCount
+  #trie
+
   constructor () {
     // using Maps for convenience and security (risk on prototype polution)
     // Map ( topic -> packet )
-    this._retained = new Map()
+    this.#retained = new Map()
     // Map ( clientId -> Map( topic -> qos ))
-    this._subscriptions = new Map()
+    this.#subscriptions = new Map()
     // Map ( clientId  > [ packet ] }
-    this._outgoing = new Map()
+    this.#outgoing = new Map()
     // Map ( clientId -> { packetId -> Packet } )
-    this._incoming = new Map()
+    this.#incoming = new Map()
     // Map( clientId -> will )
-    this._wills = new Map()
-    this._clientsCount = 0
-    this._trie = new QlobberSub(QlobberOpts)
+    this.#wills = new Map()
+    this.#clientsCount = 0
+    this.#trie = new QlobberSub(QlobberOpts)
   }
 
   storeRetained (pkt, cb) {
     const packet = Object.assign({}, pkt)
     if (packet.payload.length === 0) {
-      this._retained.delete(packet.topic)
+      this.#retained.delete(packet.topic)
     } else {
-      this._retained.set(packet.topic, packet)
+      this.#retained.set(packet.topic, packet)
     }
     cb(null)
   }
 
   createRetainedStreamCombi (patterns) {
     const iterables = patterns.map((p) => {
-      return retainedMessagesByPattern(this._retained, p)
+      return retainedMessagesByPattern(this.#retained, p)
     })
     return Readable.from(multiIterables(iterables))
   }
 
   createRetainedStream (pattern) {
-    return Readable.from(retainedMessagesByPattern(this._retained, pattern))
+    return Readable.from(retainedMessagesByPattern(this.#retained, pattern))
   }
 
   addSubscriptions (client, subs, cb) {
-    let stored = this._subscriptions.get(client.id)
-    const trie = this._trie
+    let stored = this.#subscriptions.get(client.id)
+    const trie = this.#trie
 
     if (!stored) {
       stored = new Map()
-      this._subscriptions.set(client.id, stored)
-      this._clientsCount++
+      this.#subscriptions.set(client.id, stored)
+      this.#clientsCount++
     }
 
     for (const sub of subs) {
@@ -112,8 +121,8 @@ class MemoryPersistence {
   }
 
   removeSubscriptions (client, subs, cb) {
-    const stored = this._subscriptions.get(client.id)
-    const trie = this._trie
+    const stored = this.#subscriptions.get(client.id)
+    const trie = this.#trie
 
     if (stored) {
       for (const topic of subs) {
@@ -127,8 +136,8 @@ class MemoryPersistence {
       }
 
       if (stored.size === 0) {
-        this._clientsCount--
-        this._subscriptions.delete(client.id)
+        this.#clientsCount--
+        this.#subscriptions.delete(client.id)
       }
     }
 
@@ -137,7 +146,7 @@ class MemoryPersistence {
 
   subscriptionsByClient (client, cb) {
     let subs = null
-    const stored = this._subscriptions.get(client.id)
+    const stored = this.#subscriptions.get(client.id)
     if (stored) {
       subs = []
       for (const topicAndQos of stored) {
@@ -148,16 +157,16 @@ class MemoryPersistence {
   }
 
   countOffline (cb) {
-    return cb(null, this._trie.subscriptionsCount, this._clientsCount)
+    return cb(null, this.#trie.subscriptionsCount, this.#clientsCount)
   }
 
   subscriptionsByTopic (pattern, cb) {
-    cb(null, this._trie.match(pattern))
+    cb(null, this.#trie.match(pattern))
   }
 
   cleanSubscriptions (client, cb) {
-    const trie = this._trie
-    const stored = this._subscriptions.get(client.id)
+    const trie = this.#trie
+    const stored = this.#subscriptions.get(client.id)
 
     if (stored) {
       for (const topicAndQos of stored) {
@@ -167,27 +176,33 @@ class MemoryPersistence {
         }
       }
 
-      this._clientsCount--
-      this._subscriptions.delete(client.id)
+      this.#clientsCount--
+      this.#subscriptions.delete(client.id)
     }
 
     cb(null, client)
   }
 
+  #outgoingEnqueuePerSub (sub, packet) {
+    const id = sub.clientId
+    const queue = getMapRef(this.#outgoing, id, [], CREATE_ON_EMPTY)
+    queue[queue.length] = new Packet(packet)
+  }
+
   outgoingEnqueue (sub, packet, cb) {
-    _outgoingEnqueue.call(this, sub, packet)
+    this.#outgoingEnqueuePerSub(sub, packet)
     process.nextTick(cb)
   }
 
   outgoingEnqueueCombi (subs, packet, cb) {
     for (let i = 0; i < subs.length; i++) {
-      _outgoingEnqueue.call(this, subs[i], packet)
+      this.#outgoingEnqueuePerSub(subs[i], packet)
     }
     process.nextTick(cb)
   }
 
   outgoingUpdate (client, packet, cb) {
-    const outgoing = getMapRef(this._outgoing, client.id, [], CREATE_ON_EMPTY)
+    const outgoing = getMapRef(this.#outgoing, client.id, [], CREATE_ON_EMPTY)
 
     let temp
     for (let i = 0; i < outgoing.length; i++) {
@@ -201,7 +216,7 @@ class MemoryPersistence {
                 Maximum of messageId (packet identifier) is 65535 and will be rotated,
                 brokerCounter is to ensure the packet identifier be unique.
                 The for loop is going to search which packet messageId should be updated
-                in the _outgoing queue.
+                in the #outgoing queue.
                 If there is a case that brokerCounter is different but messageId is same,
                 we need to let the loop keep searching
                 */
@@ -215,7 +230,7 @@ class MemoryPersistence {
   }
 
   outgoingClearMessageId (client, packet, cb) {
-    const outgoing = getMapRef(this._outgoing, client.id, [], CREATE_ON_EMPTY)
+    const outgoing = getMapRef(this.#outgoing, client.id, [], CREATE_ON_EMPTY)
 
     let temp
     for (let i = 0; i < outgoing.length; i++) {
@@ -231,13 +246,13 @@ class MemoryPersistence {
 
   outgoingStream (client) {
     // shallow clone the outgoing queue for this client to avoid race conditions
-    const outgoing = [].concat(getMapRef(this._outgoing, client.id, []))
+    const outgoing = [].concat(getMapRef(this.#outgoing, client.id, []))
     return Readable.from(outgoing)
   }
 
   incomingStorePacket (client, packet, cb) {
     const id = client.id
-    const store = getMapRef(this._incoming, id, {}, CREATE_ON_EMPTY)
+    const store = getMapRef(this.#incoming, id, {}, CREATE_ON_EMPTY)
 
     store[packet.messageId] = new Packet(packet)
     store[packet.messageId].messageId = packet.messageId
@@ -247,10 +262,10 @@ class MemoryPersistence {
 
   incomingGetPacket (client, packet, cb) {
     const id = client.id
-    const store = getMapRef(this._incoming, id, {})
+    const store = getMapRef(this.#incoming, id, {})
     let err = null
 
-    this._incoming.set(id, store)
+    this.#incoming.set(id, store)
 
     if (!store[packet.messageId]) {
       err = new Error('no such packet')
@@ -261,7 +276,7 @@ class MemoryPersistence {
 
   incomingDelPacket (client, packet, cb) {
     const id = client.id
-    const store = getMapRef(this._incoming, id, {})
+    const store = getMapRef(this.#incoming, id, {})
     const toDelete = store[packet.messageId]
     let err = null
 
@@ -277,40 +292,34 @@ class MemoryPersistence {
   putWill (client, packet, cb) {
     packet.brokerId = this.broker.id
     packet.clientId = client.id
-    this._wills.set(client.id, packet)
+    this.#wills.set(client.id, packet)
     cb(null, client)
   }
 
   getWill (client, cb) {
-    cb(null, this._wills.get(client.id), client)
+    cb(null, this.#wills.get(client.id), client)
   }
 
   delWill (client, cb) {
-    const will = this._wills.get(client.id)
-    this._wills.delete(client.id)
+    const will = this.#wills.get(client.id)
+    this.#wills.delete(client.id)
     cb(null, will, client)
   }
 
   streamWill (brokers = {}) {
-    return Readable.from(willsByBrokers(this._wills, brokers))
+    return Readable.from(willsByBrokers(this.#wills, brokers))
   }
 
   getClientList (topic) {
-    return Readable.from(clientListbyTopic(this._subscriptions, topic))
+    return Readable.from(clientListbyTopic(this.#subscriptions, topic))
   }
 
   destroy (cb) {
-    this._retained = null
+    this.#retained = null
     if (cb) {
       cb(null)
     }
   }
-}
-
-function _outgoingEnqueue (sub, packet) {
-  const id = sub.clientId
-  const queue = getMapRef(this._outgoing, id, [], CREATE_ON_EMPTY)
-  queue[queue.length] = new Packet(packet)
 }
 
 function getMapRef (map, key, ifEmpty, createOnEmpty = false) {
