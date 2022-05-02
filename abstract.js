@@ -53,7 +53,7 @@ function abstractPersistence (opts) {
 
   // legacy third party streams are typically not iterable
   function iterableStream (stream) {
-    if (typeof stream[Symbol.iterator] !== 'function') {
+    if (typeof stream[Symbol.asyncIterator] !== 'function') {
       return new Readable({ objectMode: true }).wrap(stream)
     }
     return stream
@@ -125,6 +125,10 @@ function abstractPersistence (opts) {
     if (packet.messageId === null) packet.messageId = undefined
     t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
     t.deepLooseEqual(packet, expected, 'must return the packet')
+  }
+
+  function deClassed (obj) {
+    return Object.assign({}, obj)
   }
 
   test('store and look up retained messages', t => {
@@ -949,8 +953,8 @@ function abstractPersistence (opts) {
         streamForEach(stream, clearQueue).then(function done () {
           t.equal(queue.length, 2)
           if (queue.length === 2) {
-            t.deepEqual(queue[0], updated1)
-            t.deepEqual(queue[1], updated2)
+            t.deepEqual(deClassed(queue[0]), deClassed(updated1))
+            t.deepEqual(deClassed(queue[1]), deClassed(updated2))
           }
           instance.destroy(t.end.bind(t))
         })
@@ -1095,7 +1099,8 @@ function abstractPersistence (opts) {
       getArrayFromStream(stream).then(list => {
         delete list[0].messageId
         t.notEqual(list[0], updated, 'must not be the same object')
-        t.deepEqual(list, [updated], 'must return the packet')
+        t.deepEqual(deClassed(list[0]), deClassed(updated), 'must return the packet')
+        t.equal(list.length, 1, 'must return only one packet')
         instance.destroy(t.end.bind(t))
       })
     })
@@ -1143,7 +1148,8 @@ function abstractPersistence (opts) {
           getArrayFromStream(stream).then(list => {
             delete list[0].messageId
             t.notEqual(list[0], updated2, 'must not be the same object')
-            t.deepEqual(list, [updated2], 'must return the packet')
+            t.deepEqual(deClassed(list[0]), deClassed(updated2), 'must return the packet')
+            t.equal(list.length, 1, 'must return only one packet')
             instance.destroy(t.end.bind(t))
           })
         })
