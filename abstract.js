@@ -243,13 +243,22 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const subs = [{
       topic: 'hello',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'matteo',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'noqos',
-      qos: 0
+      qos: 0,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
@@ -268,10 +277,16 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const subs = [{
       topic: 'hello',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'matteo',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
@@ -284,7 +299,10 @@ function abstractPersistence (opts) {
           t.notOk(err, 'no error')
           t.deepEqual(resubs, [{
             topic: 'matteo',
-            qos: 1
+            qos: 1,
+            rh: 0,
+            rap: true,
+            nl: false
           }])
           instance.destroy(t.end.bind(t))
         })
@@ -296,13 +314,22 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const subs = [{
       topic: 'hello',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'hello/#',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'matteo',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, err => {
@@ -312,7 +339,10 @@ function abstractPersistence (opts) {
         t.deepEqual(resubs, [{
           clientId: client.id,
           topic: 'hello/#',
-          qos: 1
+          qos: 1,
+          rh: 0,
+          rap: true,
+          nl: false
         }, {
           clientId: client.id,
           topic: 'hello',
@@ -396,13 +426,22 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const subs = [{
       topic: 'hello',
-      qos: 0
+      qos: 0,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'hello/#',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'matteo',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, err => {
@@ -415,7 +454,10 @@ function abstractPersistence (opts) {
           t.deepEqual(resubs2, [{
             clientId: client.id,
             topic: 'hello/#',
-            qos: 1
+            qos: 1,
+            rh: 0,
+            rap: true,
+            nl: false
           }])
           instance.destroy(t.end.bind(t))
         })
@@ -487,10 +529,16 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const subs = [{
       topic: 'hello',
-      qos: 0
+      qos: 0,
+      rh: 0,
+      rap: true,
+      nl: false
     }, {
       topic: 'hello',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
@@ -501,7 +549,10 @@ function abstractPersistence (opts) {
         t.error(err, 'no error')
         t.deepEqual(subsForClient, [{
           topic: 'hello',
-          qos: 1
+          qos: 1,
+          rh: 0,
+          rap: true,
+          nl: false
         }])
 
         instance.subscriptionsByTopic('hello', (err, subsForTopic) => {
@@ -509,7 +560,10 @@ function abstractPersistence (opts) {
           t.deepEqual(subsForTopic, [{
             clientId: 'abcde',
             topic: 'hello',
-            qos: 1
+            qos: 1,
+            rh: 0,
+            rap: true,
+            nl: false
           }])
 
           instance.countOffline((err, subsCount, clientsCount) => {
@@ -527,7 +581,7 @@ function abstractPersistence (opts) {
   testInstance('replace subscriptions', (t, instance) => {
     const client = { id: 'abcde' }
     const topic = 'hello'
-    const sub = { topic }
+    const sub = { topic, rh: 0, rap: true, nl: false }
     const subByTopic = { clientId: client.id, topic }
 
     function check (qos, cb) {
@@ -573,18 +627,18 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const topic = 'hello'
     const subs = [
-      { topic, qos: 0 },
-      { topic, qos: 1 },
-      { topic, qos: 2 },
-      { topic, qos: 1 },
-      { topic, qos: 0 }
+      { topic, qos: 0, rh: 0, rap: true, nl: false },
+      { topic, qos: 1, rh: 0, rap: true, nl: false },
+      { topic, qos: 2, rh: 0, rap: true, nl: false },
+      { topic, qos: 1, rh: 0, rap: true, nl: false },
+      { topic, qos: 0, rh: 0, rap: true, nl: false }
     ]
     instance.addSubscriptions(client, subs, (err, reClient) => {
       t.equal(reClient, client, 'client must be the same')
       t.error(err, 'no error')
       instance.subscriptionsByClient(client, (err, subsForClient, client) => {
         t.error(err, 'no error')
-        t.deepEqual(subsForClient, [{ topic, qos: 0 }])
+        t.deepEqual(subsForClient, [{ topic, qos: 0, rh: 0, rap: true, nl: false }])
         instance.subscriptionsByTopic(topic, (err, subsForTopic) => {
           t.error(err, 'no error')
           t.deepEqual(subsForTopic, [])
@@ -754,7 +808,10 @@ function abstractPersistence (opts) {
     const topic = 'hello'
     const subs = [{
       topic,
-      qos: 0
+      qos: 0,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
@@ -777,11 +834,17 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const subs1 = [{
       topic: 'hello1',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
     const subs2 = [{
       topic: 'hello2',
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
     let calls = 2
 
