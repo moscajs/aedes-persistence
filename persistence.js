@@ -101,7 +101,6 @@ class MemoryPersistence {
 
     for (const sub of subs) {
       const storedSub = stored.get(sub.topic)
-      const hasQoSGreaterThanZero = storedSub?.qos > 0
       if (sub.qos > 0) {
         trie.add(sub.topic, {
           clientId: client.id,
@@ -111,7 +110,7 @@ class MemoryPersistence {
           rap: sub.rap,
           nl: sub.nl
         })
-      } else if (hasQoSGreaterThanZero) {
+      } else if (storedSub?.qos > 0) {
         trie.remove(sub.topic, {
           clientId: client.id,
           topic: sub.topic
