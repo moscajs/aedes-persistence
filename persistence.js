@@ -56,7 +56,7 @@ class MemoryPersistence {
     // using Maps for convenience and security (risk on prototype polution)
     // Map ( topic -> packet )
     this.#retained = new Map()
-    // Map ( clientId -> Map( topic -> qos ))
+    // Map ( clientId -> Map( topic -> { qos, rh, rap, nl } ))
     this.#subscriptions = new Map()
     // Map ( clientId  > [ packet ] }
     this.#outgoing = new Map()
@@ -100,21 +100,23 @@ class MemoryPersistence {
     }
 
     for (const sub of subs) {
-      const qos = stored.get(sub.topic)
-      const hasQoSGreaterThanZero = (qos !== undefined) && (qos > 0)
+      const storedSub = stored.get(sub.topic)
       if (sub.qos > 0) {
         trie.add(sub.topic, {
           clientId: client.id,
           topic: sub.topic,
-          qos: sub.qos
+          qos: sub.qos,
+          rh: sub.rh,
+          rap: sub.rap,
+          nl: sub.nl
         })
-      } else if (hasQoSGreaterThanZero) {
+      } else if (storedSub?.qos > 0) {
         trie.remove(sub.topic, {
           clientId: client.id,
           topic: sub.topic
         })
       }
-      stored.set(sub.topic, sub.qos)
+      stored.set(sub.topic, { qos: sub.qos, rh: sub.rh, rap: sub.rap, nl: sub.nl })
     }
 
     cb(null, client)
@@ -126,9 +128,9 @@ class MemoryPersistence {
 
     if (stored) {
       for (const topic of subs) {
-        const qos = stored.get(topic)
-        if (qos !== undefined) {
-          if (qos > 0) {
+        const storedSub = stored.get(topic)
+        if (storedSub !== undefined) {
+          if (storedSub.qos > 0) {
             trie.remove(topic, { clientId: client.id, topic })
           }
           stored.delete(topic)
@@ -149,8 +151,8 @@ class MemoryPersistence {
     const stored = this.#subscriptions.get(client.id)
     if (stored) {
       subs = []
-      for (const topicAndQos of stored) {
-        subs.push({ topic: topicAndQos[0], qos: topicAndQos[1] })
+      for (const [topic, storedSub] of stored) {
+        subs.push({ topic, ...storedSub })
       }
     }
     cb(null, subs, client)
@@ -169,9 +171,8 @@ class MemoryPersistence {
     const stored = this.#subscriptions.get(client.id)
 
     if (stored) {
-      for (const topicAndQos of stored) {
-        if (topicAndQos[1] > 0) {
-          const topic = topicAndQos[0]
+      for (const [topic, storedSub] of stored) {
+        if (storedSub.qos > 0) {
           trie.remove(topic, { clientId: client.id, topic })
         }
       }
