@@ -74,7 +74,7 @@
     "tsd": "^0.20.0"
   },
   "dependencies": {
-    "aedes-packet": "^2.3.1",
+    "aedes-packet": "^3.0.0",
     "qlobber": "^7.0.0"
   }
 }
