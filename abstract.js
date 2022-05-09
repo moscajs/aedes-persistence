@@ -346,7 +346,10 @@ function abstractPersistence (opts) {
         }, {
           clientId: client.id,
           topic: 'hello',
-          qos: 1
+          qos: 1,
+          rh: 0,
+          rap: true,
+          nl: false
         }])
         instance.destroy(t.end.bind(t))
       })
@@ -582,7 +585,7 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
     const topic = 'hello'
     const sub = { topic, rh: 0, rap: true, nl: false }
-    const subByTopic = { clientId: client.id, topic }
+    const subByTopic = { clientId: client.id, topic, rh: 0, rap: true, nl: false }
 
     function check (qos, cb) {
       sub.qos = subByTopic.qos = qos
@@ -783,7 +786,10 @@ function abstractPersistence (opts) {
     const topic = 'hello'
     const subs = [{
       topic,
-      qos: 1
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
