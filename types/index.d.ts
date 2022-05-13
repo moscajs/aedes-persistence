@@ -4,7 +4,7 @@ import type { Readable } from "stream";
 
 export type { AedesPacket as Packet } from "aedes-packet";
 
-type ClientId = Subscription["clientId"];
+type ClientId = Client["id"];
 type MessageId = AedesPacket["messageId"];
 type Topic = Subscription["topic"];
 type TopicPattern = Subscription["topic"];
