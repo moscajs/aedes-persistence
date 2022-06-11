@@ -1480,7 +1480,8 @@ function abstractPersistence (opts) {
 
   testInstance('stream all will messages', (t, instance) => {
     const client = {
-      id: '12345'
+      id: '12345',
+      brokerId: instance.broker.id
     }
     const toWrite = {
       topic: 'hello/died',
@@ -1512,10 +1513,12 @@ function abstractPersistence (opts) {
   testInstance('stream all will message for unknown brokers', (t, instance) => {
     const originalId = instance.broker.id
     const client = {
-      id: '42'
+      id: '42',
+      brokerId: instance.broker.id
     }
     const anotherClient = {
-      id: '24'
+      id: '24',
+      brokerId: instance.broker.id
     }
     const toWrite1 = {
       topic: 'hello/died42',
