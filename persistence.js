@@ -110,7 +110,7 @@ class MemoryPersistence {
           rap: sub.rap,
           nl: sub.nl
         })
-      } else if (storedSub?.qos > 0) {
+      } else if (storedSub && storedSub.qos > 0) {
         trie.remove(sub.topic, {
           clientId: client.id,
           topic: sub.topic
