@@ -1,4 +1,6 @@
-const { Readable } = require('stream')
+const assert = require('node:assert/strict')
+const looseAssert = require('node:assert')
+const { Readable } = require('node:stream')
 const Packet = require('aedes-packet')
 
 function abstractPersistence (opts) {
@@ -96,7 +98,7 @@ function abstractPersistence (opts) {
       if (err) { throw err }
 
       storeRetained(instance, opts, (err, packet) => {
-        t.notOk(err, 'no error')
+        assert.ok(!err, 'no error')
         let stream
         if (Array.isArray(pattern)) {
           stream = instance.createRetainedStreamCombi(pattern)
@@ -105,8 +107,8 @@ function abstractPersistence (opts) {
         }
 
         getArrayFromStream(stream).then(list => {
-          t.deepEqual(list, [packet], 'must return the packet')
-          instance.destroy(t.end.bind(t))
+          assert.deepEqual(list, [packet], 'must return the packet')
+          instance.destroy()
         })
       })
     })
@@ -123,8 +125,9 @@ function abstractPersistence (opts) {
 
   function testPacket (t, packet, expected) {
     if (packet.messageId === null) packet.messageId = undefined
-    t.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-    t.deepLooseEqual(packet, expected, 'must return the packet')
+    assert.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
+    // deepLooseEqual?
+    looseAssert.deepEqual(structuredClone(packet), expected, 'must return the packet')
   }
 
   function deClassed (obj) {
@@ -167,10 +170,10 @@ function abstractPersistence (opts) {
       const packet = new Packet(retained, instance.broker)
 
       instance.storeRetained(packet, err => {
-        t.notOk(err, 'no error')
-        t.equal(packet.brokerCounter, index + 1, 'packet stored in order')
+        assert.ok(!err, 'no error')
+        assert.equal(packet.brokerCounter, index + 1, 'packet stored in order')
         if (++done === totalMessages) {
-          instance.destroy(t.end.bind(t))
+          instance.destroy()
         }
       })
     }
@@ -182,16 +185,16 @@ function abstractPersistence (opts) {
 
   testInstance('remove retained message', (t, instance) => {
     storeRetained(instance, {}, (err, packet) => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       storeRetained(instance, {
         payload: Buffer.alloc(0)
       }, err => {
-        t.notOk(err, 'no error')
+        assert.ok(!err, 'no error')
 
         const stream = instance.createRetainedStream('#')
         getArrayFromStream(stream).then(list => {
-          t.deepEqual(list, [], 'must return an empty list')
-          instance.destroy(t.end.bind(t))
+          assert.deepEqual(list, [], 'must return an empty list')
+          instance.destroy()
         })
       })
     })
@@ -199,17 +202,17 @@ function abstractPersistence (opts) {
 
   testInstance('storing twice a retained message should keep only the last', (t, instance) => {
     storeRetained(instance, {}, (err, packet) => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       storeRetained(instance, {
         payload: Buffer.from('ahah')
       }, (err, packet) => {
-        t.notOk(err, 'no error')
+        assert.ok(!err, 'no error')
 
         const stream = instance.createRetainedStream('#')
 
         getArrayFromStream(stream).then(list => {
-          t.deepEqual(list, [packet], 'must return the last packet')
-          instance.destroy(t.end.bind(t))
+          assert.deepEqual(list, [packet], 'must return the last packet')
+          instance.destroy()
         })
       })
     })
@@ -227,14 +230,14 @@ function abstractPersistence (opts) {
     const newPacket = Object.assign({}, packet)
 
     instance.storeRetained(packet, err => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       // packet reference change to check if a new packet is stored always
       packet.retain = false
       const stream = instance.createRetainedStream('#')
 
       getArrayFromStream(stream).then(list => {
-        t.deepEqual(list, [newPacket], 'must return the last packet')
-        instance.destroy(t.end.bind(t))
+        assert.deepEqual(list, [newPacket], 'must return the last packet')
+        instance.destroy()
       })
     })
   })
@@ -262,13 +265,13 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.equal(reClient, client, 'client must be the same')
-      t.notOk(err, 'no error')
+      assert.equal(reClient, client, 'client must be the same')
+      assert.ok(!err, 'no error')
       instance.subscriptionsByClient(client, (err, resubs, reReClient) => {
-        t.equal(reReClient, client, 'client must be the same')
-        t.notOk(err, 'no error')
-        t.deepEqual(resubs, subs)
-        instance.destroy(t.end.bind(t))
+        assert.equal(reReClient, client, 'client must be the same')
+        assert.ok(!err, 'no error')
+        assert.deepEqual(resubs, subs)
+        instance.destroy()
       })
     })
   })
@@ -290,21 +293,21 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       instance.removeSubscriptions(client, ['hello'], (err, reClient) => {
-        t.notOk(err, 'no error')
-        t.equal(reClient, client, 'client must be the same')
+        assert.ok(!err, 'no error')
+        assert.equal(reClient, client, 'client must be the same')
         instance.subscriptionsByClient(client, (err, resubs, reClient) => {
-          t.equal(reClient, client, 'client must be the same')
-          t.notOk(err, 'no error')
-          t.deepEqual(resubs, [{
+          assert.equal(reClient, client, 'client must be the same')
+          assert.ok(!err, 'no error')
+          assert.deepEqual(resubs, [{
             topic: 'matteo',
             qos: 1,
             rh: 0,
             rap: true,
             nl: false
           }])
-          instance.destroy(t.end.bind(t))
+          instance.destroy()
         })
       })
     })
@@ -333,10 +336,10 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, err => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       instance.subscriptionsByTopic('hello', (err, resubs) => {
-        t.notOk(err, 'no error')
-        t.deepEqual(resubs, [{
+        assert.ok(!err, 'no error')
+        assert.deepEqual(resubs, [{
           clientId: client.id,
           topic: 'hello/#',
           qos: 1,
@@ -351,7 +354,7 @@ function abstractPersistence (opts) {
           rap: true,
           nl: false
         }])
-        instance.destroy(t.end.bind(t))
+        instance.destroy()
       })
     })
   })
@@ -365,13 +368,13 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client1, subs, err => {
-      t.notOk(err, 'no error for client 1')
+      assert.ok(!err, 'no error for client 1')
       instance.addSubscriptions(client2, subs, err => {
-        t.notOk(err, 'no error for client 2')
+        assert.ok(!err, 'no error for client 2')
         const stream = instance.getClientList(subs[0].topic)
         getArrayFromStream(stream).then(out => {
-          t.deepEqual(out, [client1.id, client2.id])
-          instance.destroy(t.end.bind(t))
+          assert.deepEqual(out, [client1.id, client2.id])
+          instance.destroy()
         })
       })
     })
@@ -386,15 +389,15 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client1, subs, err => {
-      t.notOk(err, 'no error for client 1')
+      assert.ok(!err, 'no error for client 1')
       instance.addSubscriptions(client2, subs, err => {
-        t.notOk(err, 'no error for client 2')
+        assert.ok(!err, 'no error for client 2')
         instance.removeSubscriptions(client2, [subs[0].topic], (err, reClient) => {
-          t.notOk(err, 'no error for removeSubscriptions')
+          assert.ok(!err, 'no error for removeSubscriptions')
           const stream = instance.getClientList(subs[0].topic)
           getArrayFromStream(stream).then(out => {
-            t.deepEqual(out, [client1.id])
-            instance.destroy(t.end.bind(t))
+            assert.deepEqual(out, [client1.id])
+            instance.destroy()
           })
         })
       })
@@ -410,15 +413,15 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client1, subs, err => {
-      t.notOk(err, 'no error for client 1')
+      assert.ok(!err, 'no error for client 1')
       instance.addSubscriptions(client2, subs, err => {
-        t.notOk(err, 'no error for client 2')
+        assert.ok(!err, 'no error for client 2')
         instance.removeSubscriptions(client2, [subs[0].topic], (err, reClient) => {
-          t.notOk(err, 'no error for removeSubscriptions')
+          assert.ok(!err, 'no error for removeSubscriptions')
           instance.subscriptionsByTopic(subs[0].topic, (err, clients) => {
-            t.notOk(err, 'no error getting subscriptions by topic')
-            t.deepEqual(clients[0].clientId, client1.id)
-            instance.destroy(t.end.bind(t))
+            assert.ok(!err, 'no error getting subscriptions by topic')
+            assert.deepEqual(clients[0].clientId, client1.id)
+            instance.destroy()
           })
         })
       })
@@ -448,13 +451,13 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, err => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       instance.subscriptionsByClient(client, (err, resubs) => {
-        t.notOk(err, 'no error')
-        t.deepEqual(resubs, subs)
+        assert.ok(!err, 'no error')
+        assert.deepEqual(resubs, subs)
         instance.subscriptionsByTopic('hello', (err, resubs2) => {
-          t.notOk(err, 'no error')
-          t.deepEqual(resubs2, [{
+          assert.ok(!err, 'no error')
+          assert.deepEqual(resubs2, [{
             clientId: client.id,
             topic: 'hello/#',
             qos: 1,
@@ -462,7 +465,7 @@ function abstractPersistence (opts) {
             rap: true,
             nl: false
           }])
-          instance.destroy(t.end.bind(t))
+          instance.destroy()
         })
       })
     })
@@ -479,23 +482,23 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, err => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       instance.cleanSubscriptions(client, err => {
-        t.notOk(err, 'no error')
+        assert.ok(!err, 'no error')
         instance.subscriptionsByTopic('hello', (err, resubs) => {
-          t.notOk(err, 'no error')
-          t.deepEqual(resubs, [], 'no subscriptions')
+          assert.ok(!err, 'no error')
+          assert.deepEqual(resubs, [], 'no subscriptions')
 
           instance.subscriptionsByClient(client, (err, resubs) => {
-            t.error(err)
-            t.deepEqual(resubs, null, 'no subscriptions')
+            assert.ifError(err)
+            assert.deepEqual(resubs, null, 'no subscriptions')
 
             instance.countOffline((err, subsCount, clientsCount) => {
-              t.error(err, 'no error')
-              t.equal(subsCount, 0, 'no subscriptions added')
-              t.equal(clientsCount, 0, 'no clients added')
+              assert.ifError(err, 'no error')
+              assert.equal(subsCount, 0, 'no subscriptions added')
+              assert.equal(clientsCount, 0, 'no clients added')
 
-              instance.destroy(t.end.bind(t))
+              instance.destroy()
             })
           })
         })
@@ -507,21 +510,21 @@ function abstractPersistence (opts) {
     const client = { id: 'abcde' }
 
     instance.cleanSubscriptions(client, err => {
-      t.notOk(err, 'no error')
+      assert.ok(!err, 'no error')
       instance.subscriptionsByTopic('hello', (err, resubs) => {
-        t.notOk(err, 'no error')
-        t.deepEqual(resubs, [], 'no subscriptions')
+        assert.ok(!err, 'no error')
+        assert.deepEqual(resubs, [], 'no subscriptions')
 
         instance.subscriptionsByClient(client, (err, resubs) => {
-          t.error(err)
-          t.deepEqual(resubs, null, 'no subscriptions')
+          assert.ifError(err)
+          assert.deepEqual(resubs, null, 'no subscriptions')
 
           instance.countOffline((err, subsCount, clientsCount) => {
-            t.error(err, 'no error')
-            t.equal(subsCount, 0, 'no subscriptions added')
-            t.equal(clientsCount, 0, 'no clients added')
+            assert.ifError(err, 'no error')
+            assert.equal(subsCount, 0, 'no subscriptions added')
+            assert.equal(clientsCount, 0, 'no clients added')
 
-            instance.destroy(t.end.bind(t))
+            instance.destroy()
           })
         })
       })
@@ -545,12 +548,12 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.equal(reClient, client, 'client must be the same')
-      t.error(err, 'no error')
+      assert.equal(reClient, client, 'client must be the same')
+      assert.ifError(err, 'no error')
 
       instance.subscriptionsByClient(client, (err, subsForClient, client) => {
-        t.error(err, 'no error')
-        t.deepEqual(subsForClient, [{
+        assert.ifError(err, 'no error')
+        assert.deepEqual(subsForClient, [{
           topic: 'hello',
           qos: 1,
           rh: 0,
@@ -559,8 +562,8 @@ function abstractPersistence (opts) {
         }])
 
         instance.subscriptionsByTopic('hello', (err, subsForTopic) => {
-          t.error(err, 'no error')
-          t.deepEqual(subsForTopic, [{
+          assert.ifError(err, 'no error')
+          assert.deepEqual(subsForTopic, [{
             clientId: 'abcde',
             topic: 'hello',
             qos: 1,
@@ -570,11 +573,11 @@ function abstractPersistence (opts) {
           }])
 
           instance.countOffline((err, subsCount, clientsCount) => {
-            t.error(err, 'no error')
-            t.equal(subsCount, 1, 'one subscription added')
-            t.equal(clientsCount, 1, 'one client added')
+            assert.ifError(err, 'no error')
+            assert.equal(subsCount, 1, 'one subscription added')
+            assert.equal(clientsCount, 1, 'one client added')
 
-            instance.destroy(t.end.bind(t))
+            instance.destroy()
           })
         })
       })
@@ -590,22 +593,22 @@ function abstractPersistence (opts) {
     function check (qos, cb) {
       sub.qos = subByTopic.qos = qos
       instance.addSubscriptions(client, [sub], (err, reClient) => {
-        t.equal(reClient, client, 'client must be the same')
-        t.error(err, 'no error')
+        assert.equal(reClient, client, 'client must be the same')
+        assert.ifError(err, 'no error')
         instance.subscriptionsByClient(client, (err, subsForClient, client) => {
-          t.error(err, 'no error')
-          t.deepEqual(subsForClient, [sub])
+          assert.ifError(err, 'no error')
+          assert.deepEqual(subsForClient, [sub])
           instance.subscriptionsByTopic(topic, (err, subsForTopic) => {
-            t.error(err, 'no error')
-            t.deepEqual(subsForTopic, qos === 0 ? [] : [subByTopic])
+            assert.ifError(err, 'no error')
+            assert.deepEqual(subsForTopic, qos === 0 ? [] : [subByTopic])
             instance.countOffline((err, subsCount, clientsCount) => {
-              t.error(err, 'no error')
+              assert.ifError(err, 'no error')
               if (qos === 0) {
-                t.equal(subsCount, 0, 'no subscriptions added')
+                assert.equal(subsCount, 0, 'no subscriptions added')
               } else {
-                t.equal(subsCount, 1, 'one subscription added')
+                assert.equal(subsCount, 1, 'one subscription added')
               }
-              t.equal(clientsCount, 1, 'one client added')
+              assert.equal(clientsCount, 1, 'one client added')
               cb()
             })
           })
@@ -618,7 +621,7 @@ function abstractPersistence (opts) {
         check(2, () => {
           check(1, () => {
             check(0, () => {
-              instance.destroy(t.end.bind(t))
+              instance.destroy()
             })
           })
         })
@@ -637,19 +640,19 @@ function abstractPersistence (opts) {
       { topic, qos: 0, rh: 0, rap: true, nl: false }
     ]
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.equal(reClient, client, 'client must be the same')
-      t.error(err, 'no error')
+      assert.equal(reClient, client, 'client must be the same')
+      assert.ifError(err, 'no error')
       instance.subscriptionsByClient(client, (err, subsForClient, client) => {
-        t.error(err, 'no error')
-        t.deepEqual(subsForClient, [{ topic, qos: 0, rh: 0, rap: true, nl: false }])
+        assert.ifError(err, 'no error')
+        assert.deepEqual(subsForClient, [{ topic, qos: 0, rh: 0, rap: true, nl: false }])
         instance.subscriptionsByTopic(topic, (err, subsForTopic) => {
-          t.error(err, 'no error')
-          t.deepEqual(subsForTopic, [])
+          assert.ifError(err, 'no error')
+          assert.deepEqual(subsForTopic, [])
           instance.countOffline((err, subsCount, clientsCount) => {
-            t.error(err, 'no error')
-            t.equal(subsCount, 0, 'no subscriptions added')
-            t.equal(clientsCount, 1, 'one client added')
-            instance.destroy(t.end.bind(t))
+            assert.ifError(err, 'no error')
+            assert.equal(subsCount, 0, 'no subscriptions added')
+            assert.equal(clientsCount, 1, 'one client added')
+            instance.destroy()
           })
         })
       })
@@ -670,47 +673,47 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.equal(reClient, client, 'client must be the same')
-      t.error(err, 'no error')
+      assert.equal(reClient, client, 'client must be the same')
+      assert.ifError(err, 'no error')
 
       instance.countOffline((err, subsCount, clientsCount) => {
-        t.error(err, 'no error')
-        t.equal(subsCount, 2, 'two subscriptions added')
-        t.equal(clientsCount, 1, 'one client added')
+        assert.ifError(err, 'no error')
+        assert.equal(subsCount, 2, 'two subscriptions added')
+        assert.equal(clientsCount, 1, 'one client added')
 
         instance.removeSubscriptions(client, ['hello'], (err, reClient) => {
-          t.error(err, 'no error')
+          assert.ifError(err, 'no error')
 
           instance.countOffline((err, subsCount, clientsCount) => {
-            t.error(err, 'no error')
-            t.equal(subsCount, 1, 'one subscription added')
-            t.equal(clientsCount, 1, 'one client added')
+            assert.ifError(err, 'no error')
+            assert.equal(subsCount, 1, 'one subscription added')
+            assert.equal(clientsCount, 1, 'one client added')
 
             instance.removeSubscriptions(client, ['matteo'], (err, reClient) => {
-              t.error(err, 'no error')
+              assert.ifError(err, 'no error')
 
               instance.countOffline((err, subsCount, clientsCount) => {
-                t.error(err, 'no error')
-                t.equal(subsCount, 0, 'zero subscriptions added')
-                t.equal(clientsCount, 1, 'one client added')
+                assert.ifError(err, 'no error')
+                assert.equal(subsCount, 0, 'zero subscriptions added')
+                assert.equal(clientsCount, 1, 'one client added')
 
                 instance.removeSubscriptions(client, ['noqos'], (err, reClient) => {
-                  t.error(err, 'no error')
+                  assert.ifError(err, 'no error')
 
                   instance.countOffline((err, subsCount, clientsCount) => {
-                    t.error(err, 'no error')
-                    t.equal(subsCount, 0, 'zero subscriptions added')
-                    t.equal(clientsCount, 0, 'zero clients added')
+                    assert.ifError(err, 'no error')
+                    assert.equal(subsCount, 0, 'zero subscriptions added')
+                    assert.equal(clientsCount, 0, 'zero clients added')
 
                     instance.removeSubscriptions(client, ['noqos'], (err, reClient) => {
-                      t.error(err, 'no error')
+                      assert.ifError(err, 'no error')
 
                       instance.countOffline((err, subsCount, clientsCount) => {
-                        t.error(err, 'no error')
-                        t.equal(subsCount, 0, 'zero subscriptions added')
-                        t.equal(clientsCount, 0, 'zero clients added')
+                        assert.ifError(err, 'no error')
+                        assert.equal(subsCount, 0, 'zero subscriptions added')
+                        assert.equal(clientsCount, 0, 'zero clients added')
 
-                        instance.destroy(t.end.bind(t))
+                        instance.destroy()
                       })
                     })
                   })
@@ -739,13 +742,13 @@ function abstractPersistence (opts) {
 
     function remove (client, subs, expectedSubs, expectedClients, cb) {
       instance.removeSubscriptions(client, subs, (err, reClient) => {
-        t.error(err, 'no error')
-        t.equal(reClient, client, 'client must be the same')
+        assert.ifError(err, 'no error')
+        assert.equal(reClient, client, 'client must be the same')
 
         instance.countOffline((err, subsCount, clientsCount) => {
-          t.error(err, 'no error')
-          t.equal(subsCount, expectedSubs, 'subscriptions added')
-          t.equal(clientsCount, expectedClients, 'clients added')
+          assert.ifError(err, 'no error')
+          assert.equal(subsCount, expectedSubs, 'subscriptions added')
+          assert.equal(clientsCount, expectedClients, 'clients added')
 
           cb()
         })
@@ -753,12 +756,12 @@ function abstractPersistence (opts) {
     }
 
     instance.addSubscriptions(client1, subs, (err, reClient) => {
-      t.equal(reClient, client1, 'client must be the same')
-      t.error(err, 'no error')
+      assert.equal(reClient, client1, 'client must be the same')
+      assert.ifError(err, 'no error')
 
       instance.addSubscriptions(client2, subs, (err, reClient) => {
-        t.equal(reClient, client2, 'client must be the same')
-        t.error(err, 'no error')
+        assert.equal(reClient, client2, 'client must be the same')
+        assert.ifError(err, 'no error')
 
         remove(client1, ['foobar'], 4, 2, () => {
           remove(client1, ['hello'], 3, 2, () => {
@@ -768,7 +771,7 @@ function abstractPersistence (opts) {
                   remove(client2, ['hello'], 1, 1, () => {
                     remove(client2, ['matteo'], 0, 1, () => {
                       remove(client2, ['noqos'], 0, 0, () => {
-                        instance.destroy(t.end.bind(t))
+                        instance.destroy()
                       })
                     })
                   })
@@ -793,17 +796,17 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.equal(reClient, client, 'client must be the same')
-      t.error(err, 'no error')
+      assert.equal(reClient, client, 'client must be the same')
+      assert.ifError(err, 'no error')
 
       instance.addSubscriptions(client, subs, (err, resCLient) => {
-        t.equal(resCLient, client, 'client must be the same')
-        t.error(err, 'no error')
+        assert.equal(resCLient, client, 'client must be the same')
+        assert.ifError(err, 'no error')
         subs[0].clientId = client.id
         instance.subscriptionsByTopic(topic, (err, subsForTopic) => {
-          t.error(err, 'no error')
-          t.deepEqual(subsForTopic, subs)
-          instance.destroy(t.end.bind(t))
+          assert.ifError(err, 'no error')
+          assert.deepEqual(subsForTopic, subs)
+          instance.destroy()
         })
       })
     })
@@ -821,16 +824,16 @@ function abstractPersistence (opts) {
     }]
 
     instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.equal(reClient, client, 'client must be the same')
-      t.error(err, 'no error')
+      assert.equal(reClient, client, 'client must be the same')
+      assert.ifError(err, 'no error')
 
       instance.addSubscriptions(client, subs, (err, resCLient) => {
-        t.equal(resCLient, client, 'client must be the same')
-        t.error(err, 'no error')
+        assert.equal(resCLient, client, 'client must be the same')
+        assert.ifError(err, 'no error')
         instance.subscriptionsByClient(client, (err, subsForClient, client) => {
-          t.error(err, 'no error')
-          t.deepEqual(subsForClient, subs)
-          instance.destroy(t.end.bind(t))
+          assert.ifError(err, 'no error')
+          assert.deepEqual(subsForClient, subs)
+          instance.destroy()
         })
       })
     })
@@ -857,20 +860,20 @@ function abstractPersistence (opts) {
     function done () {
       if (!--calls) {
         instance.subscriptionsByClient(client, (err, resubs) => {
-          t.notOk(err, 'no error')
+          assert.ok(!err, 'no error')
           resubs.sort((a, b) => b.topic.localeCompare(b.topic, 'en'))
-          t.deepEqual(resubs, [subs1[0], subs2[0]])
-          instance.destroy(t.end.bind(t))
+          assert.deepEqual(resubs, [subs1[0], subs2[0]])
+          instance.destroy()
         })
       }
     }
 
     instance.addSubscriptions(client, subs1, err => {
-      t.notOk(err, 'no error for hello1')
+      assert.ok(!err, 'no error for hello1')
       done()
     })
     instance.addSubscriptions(client, subs2, err => {
-      t.notOk(err, 'no error for hello2')
+      assert.ok(!err, 'no error for hello2')
       done()
     })
   })
@@ -908,13 +911,13 @@ function abstractPersistence (opts) {
     }
 
     instance.outgoingEnqueue(sub, packet, err => {
-      t.error(err)
+      assert.ifError(err)
       const stream = instance.outgoingStream(client)
 
       getArrayFromStream(stream).then(list => {
         const packet = list[0]
         testPacket(t, packet, expected)
-        instance.destroy(t.end.bind(t))
+        instance.destroy()
       })
     })
   })
@@ -961,7 +964,7 @@ function abstractPersistence (opts) {
     }
 
     instance.outgoingEnqueueCombi(subs, packet, err => {
-      t.error(err)
+      assert.ifError(err)
       const stream = instance.outgoingStream(client)
       getArrayFromStream(stream).then(list => {
         const packet = list[0]
@@ -971,7 +974,7 @@ function abstractPersistence (opts) {
         getArrayFromStream(stream2).then(list2 => {
           const packet = list2[0]
           testPacket(t, packet, expected)
-          instance.destroy(t.end.bind(t))
+          instance.destroy()
         })
       })
     })
@@ -1013,19 +1016,19 @@ function abstractPersistence (opts) {
           return new Promise((resolve, reject) => {
             instance.outgoingUpdate(client, data,
               (err, client, packet) => {
-                t.notOk(err, 'no error')
+                assert.ok(!err, 'no error')
                 queue.push(packet)
                 resolve()
               })
           })
         }
         streamForEach(stream, clearQueue).then(function done () {
-          t.equal(queue.length, 2)
+          assert.equal(queue.length, 2)
           if (queue.length === 2) {
-            t.deepEqual(deClassed(queue[0]), deClassed(updated1))
-            t.deepEqual(deClassed(queue[1]), deClassed(updated2))
+            assert.deepEqual(deClassed(queue[0]), deClassed(updated1))
+            assert.deepEqual(deClassed(queue[1]), deClassed(updated2))
           }
-          instance.destroy(t.end.bind(t))
+          instance.destroy()
         })
       })
     })
@@ -1064,13 +1067,13 @@ function abstractPersistence (opts) {
     }
 
     instance.outgoingEnqueueCombi([sub], packet, err => {
-      t.error(err)
+      assert.ifError(err)
       const stream = instance.outgoingStream(client)
 
       getArrayFromStream(stream).then(list => {
         const packet = list[0]
         testPacket(t, packet, expected)
-        instance.destroy(t.end.bind(t))
+        instance.destroy()
       })
     })
   })
@@ -1109,7 +1112,7 @@ function abstractPersistence (opts) {
     }
 
     instance.outgoingEnqueueCombi([sub], packet, err => {
-      t.error(err)
+      assert.ifError(err)
       const stream = instance.outgoingStream(client)
 
       getArrayFromStream(stream).then(list => {
@@ -1121,8 +1124,8 @@ function abstractPersistence (opts) {
         getArrayFromStream(stream2).then(list2 => {
           const packet = list2[0]
           testPacket(t, packet, expected)
-          t.notEqual(packet, expected, 'packet must be a different object')
-          instance.destroy(t.end.bind(t))
+          assert.notEqual(packet, expected, 'packet must be a different object')
+          instance.destroy()
         })
       })
     })
@@ -1130,14 +1133,14 @@ function abstractPersistence (opts) {
 
   function enqueueAndUpdate (t, instance, client, sub, packet, messageId, callback) {
     instance.outgoingEnqueueCombi([sub], packet, err => {
-      t.error(err)
+      assert.ifError(err)
       const updated = new Packet(packet)
       updated.messageId = messageId
 
       instance.outgoingUpdate(client, updated, (err, reclient, repacket) => {
-        t.error(err)
-        t.equal(reclient, client, 'client matches')
-        t.equal(repacket, updated, 'packet matches')
+        assert.ifError(err)
+        assert.equal(reclient, client, 'client matches')
+        assert.equal(repacket, updated, 'packet matches')
         callback(updated)
       })
     })
@@ -1167,10 +1170,10 @@ function abstractPersistence (opts) {
       delete updated.messageId
       getArrayFromStream(stream).then(list => {
         delete list[0].messageId
-        t.notEqual(list[0], updated, 'must not be the same object')
-        t.deepEqual(deClassed(list[0]), deClassed(updated), 'must return the packet')
-        t.equal(list.length, 1, 'must return only one packet')
-        instance.destroy(t.end.bind(t))
+        assert.notEqual(list[0], updated, 'must not be the same object')
+        assert.deepEqual(deClassed(list[0]), deClassed(updated), 'must return the packet')
+        assert.equal(list.length, 1, 'must return only one packet')
+        instance.destroy()
       })
     })
   })
@@ -1208,18 +1211,18 @@ function abstractPersistence (opts) {
     enqueueAndUpdate(t, instance, client, sub, packet1, 42, updated1 => {
       enqueueAndUpdate(t, instance, client, sub, packet2, 43, updated2 => {
         instance.outgoingClearMessageId(client, updated1, (err, packet) => {
-          t.error(err)
-          t.deepEqual(packet.messageId, 42, 'must have the same messageId')
-          t.deepEqual(packet.payload.toString(), packet1.payload.toString(), 'must have original payload')
-          t.deepEqual(packet.topic, packet1.topic, 'must have original topic')
+          assert.ifError(err)
+          assert.deepEqual(packet.messageId, 42, 'must have the same messageId')
+          assert.deepEqual(packet.payload.toString(), packet1.payload.toString(), 'must have original payload')
+          assert.deepEqual(packet.topic, packet1.topic, 'must have original topic')
           const stream = instance.outgoingStream(client)
           delete updated2.messageId
           getArrayFromStream(stream).then(list => {
             delete list[0].messageId
-            t.notEqual(list[0], updated2, 'must not be the same object')
-            t.deepEqual(deClassed(list[0]), deClassed(updated2), 'must return the packet')
-            t.equal(list.length, 1, 'must return only one packet')
-            instance.destroy(t.end.bind(t))
+            assert.notEqual(list[0], updated2, 'must not be the same object')
+            assert.deepEqual(deClassed(list[0]), deClassed(updated2), 'must return the packet')
+            assert.equal(list.length, 1, 'must return only one packet')
+            instance.destroy()
           })
         })
       })
@@ -1267,8 +1270,8 @@ function abstractPersistence (opts) {
     function clearMessage (p) {
       return new Promise((resolve, reject) => {
         instance.outgoingClearMessageId(client, p, (err, received) => {
-          t.error(err)
-          t.deepEqual(received, p, 'must return the packet')
+          assert.ifError(err)
+          assert.deepEqual(received, p, 'must return the packet')
           resolve()
         })
       })
@@ -1284,7 +1287,7 @@ function abstractPersistence (opts) {
         queued++
       }
     }
-    t.equal(queued, total, `outgoing queue must hold ${total} items`)
+    assert.equal(queued, total, `outgoing queue must hold ${total} items`)
 
     for await (const p of outStream(instance, client)) {
       await clearMessage(p)
@@ -1296,8 +1299,8 @@ function abstractPersistence (opts) {
         queued2++
       }
     }
-    t.equal(queued2, 0, 'outgoing queue is empty')
-    instance.destroy(t.end.bind(t))
+    assert.equal(queued2, 0, 'outgoing queue is empty')
+    instance.destroy()
   })
 
   testInstance('update to publish w/ same messageId', (t, instance) => {
@@ -1338,12 +1341,12 @@ function abstractPersistence (opts) {
           instance.outgoingUpdate(client, packet2, () => {
             const stream = instance.outgoingStream(client)
             getArrayFromStream(stream).then(list => {
-              t.equal(list.length, 2, 'must have two items in queue')
-              t.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
-              t.equal(list[0].messageId, packet1.messageId, 'messageId must match')
-              t.equal(list[1].brokerCounter, packet2.brokerCounter, 'brokerCounter must match')
-              t.equal(list[1].messageId, packet2.messageId, 'messageId must match')
-              instance.destroy(t.end.bind(t))
+              assert.equal(list.length, 2, 'must have two items in queue')
+              assert.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
+              assert.equal(list[0].messageId, packet1.messageId, 'messageId must match')
+              assert.equal(list[1].brokerCounter, packet2.brokerCounter, 'brokerCounter must match')
+              assert.equal(list[1].messageId, packet2.messageId, 'messageId must match')
+              instance.destroy()
             })
           })
         })
@@ -1371,14 +1374,14 @@ function abstractPersistence (opts) {
     }
 
     instance.outgoingEnqueueCombi([sub], packet, err => {
-      t.error(err)
+      assert.ifError(err)
       const updated = new Packet(packet)
       updated.messageId = 42
 
       instance.outgoingUpdate(client, updated, (err, reclient, repacket) => {
-        t.error(err)
-        t.equal(reclient, client, 'client matches')
-        t.equal(repacket, updated, 'packet matches')
+        assert.ifError(err)
+        assert.equal(reclient, client, 'client matches')
+        assert.equal(repacket, updated, 'packet matches')
 
         const pubrel = {
           cmd: 'pubrel',
@@ -1386,13 +1389,13 @@ function abstractPersistence (opts) {
         }
 
         instance.outgoingUpdate(client, pubrel, err => {
-          t.error(err)
+          assert.ifError(err)
 
           const stream = instance.outgoingStream(client)
 
           getArrayFromStream(stream).then(list => {
-            t.deepEqual(list, [pubrel], 'must return the packet')
-            instance.destroy(t.end.bind(t))
+            assert.deepEqual(list, [pubrel], 'must return the packet')
+            instance.destroy()
           })
         })
       })
@@ -1415,29 +1418,31 @@ function abstractPersistence (opts) {
     }
 
     instance.incomingStorePacket(client, packet, err => {
-      t.error(err)
+      assert.ifError(err)
 
       instance.incomingGetPacket(client, {
         messageId: packet.messageId
       }, (err, retrieved) => {
-        t.error(err)
+        assert.ifError(err)
 
         // adjusting the objects so they match
         delete retrieved.brokerCounter
         delete retrieved.brokerId
         delete packet.length
-
-        t.deepLooseEqual(retrieved, packet, 'retrieved packet must be deeply equal')
-        t.notEqual(retrieved, packet, 'retrieved packet must not be the same objet')
+        // strip the class identifier from the packet
+        const result = structuredClone(retrieved)
+        // Convert Uint8 to Buffer for comparison
+        result.payload = Buffer.from(result.payload)
+        assert.deepEqual(result, packet, 'retrieved packet must be deeply equal')
+        assert.notEqual(retrieved, packet, 'retrieved packet must not be the same object')
 
         instance.incomingDelPacket(client, retrieved, err => {
-          t.error(err)
-
+          assert.ifError(err)
           instance.incomingGetPacket(client, {
             messageId: packet.messageId
           }, (err, retrieved) => {
-            t.ok(err, 'must error')
-            instance.destroy(t.end.bind(t))
+            assert.ok(err, 'must error')
+            instance.destroy()
           })
         })
       })
@@ -1456,22 +1461,22 @@ function abstractPersistence (opts) {
     }
 
     instance.putWill(client, expected, (err, c) => {
-      t.error(err, 'no error')
-      t.equal(c, client, 'client matches')
+      assert.ifError(err, 'no error')
+      assert.equal(c, client, 'client matches')
       instance.getWill(client, (err, packet, c) => {
-        t.error(err, 'no error')
-        t.deepEqual(packet, expected, 'will matches')
-        t.equal(c, client, 'client matches')
+        assert.ifError(err, 'no error')
+        assert.deepEqual(packet, expected, 'will matches')
+        assert.equal(c, client, 'client matches')
         client.brokerId = packet.brokerId
         instance.delWill(client, (err, packet, c) => {
-          t.error(err, 'no error')
-          t.deepEqual(packet, expected, 'will matches')
-          t.equal(c, client, 'client matches')
+          assert.ifError(err, 'no error')
+          assert.deepEqual(packet, expected, 'will matches')
+          assert.equal(c, client, 'client matches')
           instance.getWill(client, (err, packet, c) => {
-            t.error(err, 'no error')
-            t.notOk(packet, 'no will after del')
-            t.equal(c, client, 'client matches')
-            instance.destroy(t.end.bind(t))
+            assert.ifError(err, 'no error')
+            assert.ok(!packet, 'no will after del')
+            assert.equal(c, client, 'client matches')
+            instance.destroy()
           })
         })
       })
@@ -1491,10 +1496,10 @@ function abstractPersistence (opts) {
     }
 
     instance.putWill(client, toWrite, (err, c) => {
-      t.error(err, 'no error')
-      t.equal(c, client, 'client matches')
+      assert.ifError(err, 'no error')
+      assert.equal(c, client, 'client matches')
       streamForEach(instance.streamWill(), (chunk) => {
-        t.deepEqual(chunk, {
+        assert.deepEqual(chunk, {
           clientId: client.id,
           brokerId: instance.broker.id,
           topic: 'hello/died',
@@ -1503,8 +1508,8 @@ function abstractPersistence (opts) {
           retain: true
         }, 'packet matches')
         instance.delWill(client, (err, result, client) => {
-          t.error(err, 'no error')
-          instance.destroy(t.end.bind(t))
+          assert.ifError(err, 'no error')
+          instance.destroy()
         })
       })
     })
@@ -1534,16 +1539,16 @@ function abstractPersistence (opts) {
     }
 
     instance.putWill(client, toWrite1, (err, c) => {
-      t.error(err, 'no error')
-      t.equal(c, client, 'client matches')
+      assert.ifError(err, 'no error')
+      assert.equal(c, client, 'client matches')
       instance.broker.id = 'anotherBroker'
       instance.putWill(anotherClient, toWrite2, (err, c) => {
-        t.error(err, 'no error')
-        t.equal(c, anotherClient, 'client matches')
+        assert.ifError(err, 'no error')
+        assert.equal(c, anotherClient, 'client matches')
         streamForEach(instance.streamWill({
           anotherBroker: Date.now()
         }), (chunk) => {
-          t.deepEqual(chunk, {
+          assert.deepEqual(chunk, {
             clientId: client.id,
             brokerId: originalId,
             topic: 'hello/died42',
@@ -1552,8 +1557,8 @@ function abstractPersistence (opts) {
             retain: true
           }, 'packet matches')
           instance.delWill(client, (err, result, client) => {
-            t.error(err, 'no error')
-            instance.destroy(t.end.bind(t))
+            assert.ifError(err, 'no error')
+            instance.destroy()
           })
         })
       })
@@ -1573,13 +1578,13 @@ function abstractPersistence (opts) {
     }
 
     instance.putWill(client, toWrite1, (err, c) => {
-      t.error(err, 'no error')
-      t.equal(c, client, 'client matches')
+      assert.ifError(err, 'no error')
+      assert.equal(c, client, 'client matches')
       instance.broker.id = 'anotherBroker'
       client.brokerId = instance.broker.id
       instance.delWill(client, (err, result, client) => {
-        t.error(err, 'no error')
-        instance.destroy(t.end.bind(t))
+        assert.ifError(err, 'no error')
+        instance.destroy()
       })
     })
   })
@@ -1590,8 +1595,8 @@ function abstractPersistence (opts) {
     }
 
     instance.outgoingClearMessageId(client, 42, err => {
-      t.error(err)
-      instance.destroy(t.end.bind(t))
+      assert.ifError(err)
+      instance.destroy()
     })
   })
 }

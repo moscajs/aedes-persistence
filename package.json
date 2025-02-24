@@ -6,11 +6,11 @@
   "types": "types/index.d.ts",
   "scripts": {
     "lint": "eslint",
-    "lint-fix": "eslint --fix",
-    "unit": "tape test.js | faucet",
+    "lint:fix": "eslint --fix",
+    "unit": "node --test test.js",
     "test:typescript": "tsd",
     "test": "npm run lint && npm run unit && tsd",
-    "coverage": "nyc --reporter=lcov tape test.js",
+    "coverage": "nyc --reporter=lcov node --test test.js",
     "test:ci": "npm run lint && npm run coverage && npm run test:typescript",
     "license-checker": "license-checker --production --onlyAllow='MIT;ISC;BSD-3-Clause;BSD-2-Clause'",
     "release": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it --disable-metrics"
@@ -57,20 +57,18 @@
   },
   "homepage": "https://github.com/moscajs/aedes-persistence#readme",
   "engines": {
-    "node": ">=14"
+    "node": ">=20"
   },
   "devDependencies": {
     "@fastify/pre-commit": "^2.2.0",
     "@types/node": "^22.13.5",
     "aedes": "^0.51.3",
     "eslint": "^9.21.0",
-    "faucet": "^0.0.4",
     "license-checker": "^25.0.1",
     "mqemitter": "^6.0.2",
     "neostandard": "^0.12.1",
     "nyc": "^17.1.0",
     "release-it": "^18.1.2",
-    "tape": "^5.9.0",
     "tsd": "^0.31.2"
   },
   "dependencies": {

@@ -1,6 +1,4 @@
-'use strict'
-
-const test = require('tape').test
+const test = require('node:test')
 const memory = require('./')
 const abs = require('./abstract')
 
