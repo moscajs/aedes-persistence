@@ -5,12 +5,12 @@
   "main": "persistence.js",
   "types": "types/index.d.ts",
   "scripts": {
-    "lint": "standard --verbose | snazzy",
-    "lint-fix": "standard --fix",
-    "unit": "tape test.js | faucet",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "unit": "node --test test.js",
     "test:typescript": "tsd",
     "test": "npm run lint && npm run unit && tsd",
-    "coverage": "nyc --reporter=lcov tape test.js",
+    "coverage": "nyc --reporter=lcov node --test test.js",
     "test:ci": "npm run lint && npm run coverage && npm run test:typescript",
     "license-checker": "license-checker --production --onlyAllow='MIT;ISC;BSD-3-Clause;BSD-2-Clause'",
     "release": "read -p 'GITHUB_TOKEN: ' GITHUB_TOKEN && export GITHUB_TOKEN=$GITHUB_TOKEN && release-it --disable-metrics"
@@ -57,24 +57,22 @@
   },
   "homepage": "https://github.com/moscajs/aedes-persistence#readme",
   "engines": {
-    "node": ">=14"
+    "node": ">=20"
   },
   "devDependencies": {
-    "@types/node": "^17.0.29",
-    "aedes": "^0.46.3",
-    "faucet": "0.0.1",
+    "@fastify/pre-commit": "^2.2.0",
+    "@types/node": "^22.13.5",
+    "aedes": "^0.51.3",
+    "eslint": "^9.21.0",
     "license-checker": "^25.0.1",
-    "mqemitter": "^4.5.0",
-    "nyc": "^15.1.0",
-    "pre-commit": "^1.2.2",
-    "release-it": "^14.14.2",
-    "snazzy": "^9.0.0",
-    "standard": "^17.0.0",
-    "tape": "^5.5.3",
-    "tsd": "^0.20.0"
+    "mqemitter": "^6.0.2",
+    "neostandard": "^0.12.1",
+    "nyc": "^17.1.0",
+    "release-it": "^18.1.2",
+    "tsd": "^0.31.2"
   },
   "dependencies": {
     "aedes-packet": "^3.0.0",
-    "qlobber": "^7.0.0"
+    "qlobber": "^8.0.1"
   }
 }
