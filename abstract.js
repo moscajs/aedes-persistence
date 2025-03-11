@@ -1423,16 +1423,16 @@ function abstractPersistence (opts) {
     t.assert.deepEqual(result, packet, 'retrieved packet must be deeply equal')
     t.assert.notEqual(retrieved, packet, 'retrieved packet must not be the same object')
     await incomingDelPacket(instance, client, retrieved)
-    incomingGetPacket(instance, client, {
-      messageId: packet.messageId
-    })
-      .then(() => {
-        t.assert.ok(false, 'must error')
+
+    try {
+      await incomingGetPacket(instance, client, {
+        messageId: packet.messageId
       })
-      .catch(async err => {
-        t.assert.ok(err, 'must error')
-        await doCleanup(t, instance)
-      })
+      t.assert.ok(false, 'must error')
+    } catch (err) {
+      t.assert.ok(err, 'must error')
+      await doCleanup(t, instance)
+    }
   })
 
   test('store, fetch and delete will message', async (t) => {
