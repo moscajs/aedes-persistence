@@ -2,6 +2,213 @@ const { Readable } = require('node:stream')
 const { promisify } = require('node:util')
 const Packet = require('aedes-packet')
 
+// promisified versions of the instance methods
+// to avoid deep callbacks while testing
+function storeRetained (instance, packet) {
+  return new Promise((resolve, reject) => {
+    instance.storeRetained(packet, err => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function addSubscriptions (instance, client, subs) {
+  return new Promise((resolve, reject) => {
+    instance.addSubscriptions(client, subs, (err, reClient) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(reClient)
+      }
+    })
+  })
+}
+
+async function removeSubscriptions (instance, client, subs) {
+  return new Promise((resolve, reject) => {
+    instance.removeSubscriptions(client, subs, (err, reClient) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(reClient)
+      }
+    })
+  })
+}
+
+async function subscriptionsByClient (instance, client) {
+  return new Promise((resolve, reject) => {
+    instance.subscriptionsByClient(client, (err, resubs, reClient) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve({ resubs, reClient })
+      }
+    })
+  })
+}
+
+async function subscriptionsByTopic (instance, topic) {
+  return new Promise((resolve, reject) => {
+    instance.subscriptionsByTopic(topic, (err, resubs) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(resubs)
+      }
+    })
+  })
+}
+
+async function cleanSubscriptions (instance, client) {
+  return new Promise((resolve, reject) => {
+    instance.cleanSubscriptions(client, (err) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function countOffline (instance) {
+  return new Promise((resolve, reject) => {
+    instance.countOffline((err, subsCount, clientsCount) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve({ subsCount, clientsCount })
+      }
+    })
+  })
+}
+
+async function outgoingEnqueue (instance, sub, packet) {
+  return new Promise((resolve, reject) => {
+    instance.outgoingEnqueue(sub, packet, err => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function outgoingEnqueueCombi (instance, subs, packet) {
+  return new Promise((resolve, reject) => {
+    instance.outgoingEnqueueCombi(subs, packet, err => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function outgoingClearMessageId (instance, client, packet) {
+  return new Promise((resolve, reject) => {
+    instance.outgoingClearMessageId(client, packet, (err, repacket) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(repacket)
+      }
+    })
+  })
+}
+
+async function outgoingUpdate (instance, client, packet) {
+  return new Promise((resolve, reject) => {
+    instance.outgoingUpdate(client, packet, (err, reclient, repacket) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve({ reclient, repacket })
+      }
+    })
+  })
+}
+
+async function incomingStorePacket (instance, client, packet) {
+  return new Promise((resolve, reject) => {
+    instance.incomingStorePacket(client, packet, err => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+async function incomingGetPacket (instance, client, packet) {
+  return new Promise((resolve, reject) => {
+    instance.incomingGetPacket(client, packet, (err, retrieved) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(retrieved)
+      }
+    })
+  })
+}
+
+async function incomingDelPacket (instance, client, packet) {
+  return new Promise((resolve, reject) => {
+    instance.incomingDelPacket(client, packet, err => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+async function putWill (instance, client, packet) {
+  return new Promise((resolve, reject) => {
+    instance.putWill(client, packet, (err, reClient) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve(reClient)
+      }
+    })
+  })
+}
+
+async function getWill (instance, client) {
+  return new Promise((resolve, reject) => {
+    instance.getWill(client, (err, packet, reClient) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve({ packet, reClient })
+      }
+    })
+  })
+}
+
+async function delWill (instance, client) {
+  return new Promise((resolve, reject) => {
+    instance.delWill(client, (err, packet, reClient) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve({ packet, reClient })
+      }
+    })
+  })
+}
+// end of promisified versions of instance methods
+
+// helper functions
 function waitForEvent (obj, resolveEvt) {
   return new Promise((resolve, reject) => {
     obj.once(resolveEvt, () => {
@@ -11,28 +218,78 @@ function waitForEvent (obj, resolveEvt) {
   })
 }
 
-function doCleanup (t, instance) {
-  instance.destroy(() => {
-    t.diagnostic('instance destroyed')
-  })
+async function doCleanup (t, instance) {
+  const instanceDestroy = promisify(instance.destroy).bind(instance)
+  await instanceDestroy()
+  t.diagnostic('instance cleaned up')
 }
 
+// legacy third party streams are typically not iterable
+function iterableStream (stream) {
+  if (typeof stream[Symbol.asyncIterator] !== 'function') {
+    return new Readable({ objectMode: true }).wrap(stream)
+  }
+  return stream
+}
+// end of legacy third party streams support
+
+function outgoingStream (instance, client) {
+  return iterableStream(instance.outgoingStream(client))
+}
+
+async function getArrayFromStream (stream) {
+  const list = []
+  for await (const item of iterableStream(stream)) {
+    list.push(item)
+  }
+  return list
+}
+
+async function storeRetainedPacket (instance, opts = {}) {
+  const packet = {
+    cmd: 'publish',
+    id: instance.broker.id,
+    topic: opts.topic || 'hello/world',
+    payload: opts.payload || Buffer.from('muahah'),
+    qos: 0,
+    retain: true
+  }
+  await storeRetained(instance, packet)
+  return packet
+}
+
+async function enqueueAndUpdate (t, instance, client, sub, packet, messageId) {
+  await outgoingEnqueueCombi(instance, [sub], packet)
+  const updated = new Packet(packet)
+  updated.messageId = messageId
+
+  const { reclient, repacket } = await outgoingUpdate(instance, client, updated)
+  t.assert.equal(reclient, client, 'client matches')
+  t.assert.equal(repacket, updated, 'packet matches')
+  return repacket
+}
+
+function testPacket (t, packet, expected) {
+  if (packet.messageId === null) packet.messageId = undefined
+  t.assert.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
+  // deepLooseEqual?
+  t.assert.deepEqual(structuredClone(packet), expected, 'must return the packet')
+}
+
+function deClassed (obj) {
+  return Object.assign({}, obj)
+}
+
+// start of abstractPersistence
 function abstractPersistence (opts) {
   const test = opts.test
-  let _persistence = opts.persistence
+  const _persistence = opts.persistence
   const waitForReady = opts.waitForReady
 
   // requiring it here so it will not error for modules
   // not using the default emitter
   const buildEmitter = opts.buildEmitter || require('mqemitter')
 
-  if (_persistence.length === 0) {
-    _persistence = function asyncify (cb) {
-      cb(null, opts.persistence())
-    }
-  }
-
-  const _asyncPersistence = promisify(_persistence)
   async function persistence (t) {
     const mq = buildEmitter()
     const broker = {
@@ -44,7 +301,7 @@ function abstractPersistence (opts) {
       counter: 0
     }
 
-    const instance = await _asyncPersistence()
+    const instance = await _persistence()
     if (instance) {
       // Wait for ready event, if applicable, to ensure the persistence isn't
       // destroyed while it's still being set up.
@@ -59,57 +316,9 @@ function abstractPersistence (opts) {
     throw new Error('no instance')
   }
 
-  // legacy third party streams are typically not iterable
-  function iterableStream (stream) {
-    if (typeof stream[Symbol.asyncIterator] !== 'function') {
-      return new Readable({ objectMode: true }).wrap(stream)
-    }
-    return stream
-  }
-  // end of legacy third party streams support
-
-  async function getArrayFromStream (stream) {
-    const list = []
-    for await (const item of iterableStream(stream)) {
-      list.push(item)
-    }
-    return list
-  }
-
-  async function streamForEach (stream, fn) {
-    for await (const item of iterableStream(stream)) {
-      await fn(item)
-    }
-  }
-
-  function asyncStoreRetained (instance, packet) {
-    return new Promise((resolve, reject) => {
-      instance.storeRetained(packet, err => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve()
-        }
-      })
-    })
-  }
-
-  async function storeRetained (instance, opts = {}) {
-    const packet = {
-      cmd: 'publish',
-      id: instance.broker.id,
-      topic: opts.topic || 'hello/world',
-      payload: opts.payload || Buffer.from('muahah'),
-      qos: 0,
-      retain: true
-    }
-    await asyncStoreRetained(instance, packet)
-    return packet
-  }
-
-  async function matchRetainedWithPattern (t, pattern, opts) {
+  async function matchRetainedWithPattern (t, pattern) {
     const instance = await persistence(t)
-    const packet = await storeRetained(instance, opts)
+    const packet = await storeRetainedPacket(instance)
     let stream
     if (Array.isArray(pattern)) {
       stream = instance.createRetainedStreamCombi(pattern)
@@ -120,18 +329,7 @@ function abstractPersistence (opts) {
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [packet], 'must return the packet')
     t.diagnostic('stream was ok')
-    doCleanup(t, instance)
-  }
-
-  function testPacket (t, packet, expected) {
-    if (packet.messageId === null) packet.messageId = undefined
-    t.assert.equal(packet.messageId, undefined, 'should have an unassigned messageId in queue')
-    // deepLooseEqual?
-    t.assert.deepEqual(structuredClone(packet), expected, 'must return the packet')
-  }
-
-  function deClassed (obj) {
-    return Object.assign({}, obj)
+    await doCleanup(t, instance)
   }
 
   // testing starts here
@@ -175,37 +373,40 @@ function abstractPersistence (opts) {
 
     for (let i = 0; i < totalMessages; i++) {
       const packet = new Packet(retained, instance.broker)
-      await storeRetained(instance, packet)
+      await storeRetainedPacket(instance, packet)
       t.assert.equal(packet.brokerCounter, i + 1, 'packet stored in order')
     }
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('remove retained message', async (t) => {
+    t.plan(1)
     const instance = await persistence(t)
-    await storeRetained(instance, {})
-    await storeRetained(instance, {
+    await storeRetainedPacket(instance, {})
+    await storeRetainedPacket(instance, {
       payload: Buffer.alloc(0)
     })
     const stream = instance.createRetainedStream('#')
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [], 'must return an empty list')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('storing twice a retained message should keep only the last', async (t) => {
+    t.plan(1)
     const instance = await persistence(t)
-    await storeRetained(instance, {})
-    const packet = await storeRetained(instance, {
+    await storeRetainedPacket(instance, {})
+    const packet = await storeRetainedPacket(instance, {
       payload: Buffer.from('ahah')
     })
     const stream = instance.createRetainedStream('#')
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [packet], 'must return the last packet')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('Create a new packet while storing a retained message', async (t) => {
+    t.plan(1)
     const instance = await persistence(t)
     const packet = {
       cmd: 'publish',
@@ -217,16 +418,17 @@ function abstractPersistence (opts) {
     }
     const newPacket = Object.assign({}, packet)
 
-    await asyncStoreRetained(instance, packet)
+    await storeRetained(instance, packet)
     // packet reference change to check if a new packet is stored always
     packet.retain = false
     const stream = instance.createRetainedStream('#')
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [newPacket], 'must return the last packet')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('store and look up subscriptions by client', async (t) => {
+    t.plan(3)
     const instance = await persistence(t)
     const client = { id: 'abcde' }
     const subs = [{
@@ -249,113 +451,13 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    instance.addSubscriptions(client, subs, (err, reClient) => {
-      t.assert.equal(reClient, client, 'client must be the same')
-      t.assert.ok(!err, 'no error')
-      instance.subscriptionsByClient(client, (err, resubs, reReClient) => {
-        t.assert.equal(reReClient, client, 'client must be the same')
-        t.assert.ok(!err, 'no error')
-        t.assert.deepEqual(resubs, subs)
-        doCleanup(t, instance)
-      })
-    })
+    const reClient = await addSubscriptions(instance, client, subs)
+    t.assert.equal(reClient, client, 'client must be the same')
+    const { resubs, reClient: reClient2 } = await subscriptionsByClient(instance, client)
+    t.assert.equal(reClient2, client, 'client must be the same')
+    t.assert.deepEqual(resubs, subs)
+    await doCleanup(t, instance)
   })
-
-  async function addSubscriptions (instance, client, subs) {
-    return new Promise((resolve, reject) => {
-      instance.addSubscriptions(client, subs, (err, reClient) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(reClient)
-        }
-      })
-    })
-  }
-
-  async function removeSubscriptions (instance, client, subs) {
-    return new Promise((resolve, reject) => {
-      instance.removeSubscriptions(client, subs, (err, reClient) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(reClient)
-        }
-      })
-    })
-  }
-
-  async function subscriptionsByClient (instance, client) {
-    return new Promise((resolve, reject) => {
-      instance.subscriptionsByClient(client, (err, resubs, reClient) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve({ resubs, reClient })
-        }
-      })
-    })
-  }
-
-  async function subscriptionsByTopic (instance, topic) {
-    return new Promise((resolve, reject) => {
-      instance.subscriptionsByTopic(topic, (err, resubs) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(resubs)
-        }
-      })
-    })
-  }
-
-  async function cleanSubscriptions (instance, client) {
-    return new Promise((resolve, reject) => {
-      instance.cleanSubscriptions(client, (err) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve()
-        }
-      })
-    })
-  }
-
-  async function countOffline (instance) {
-    return new Promise((resolve, reject) => {
-      instance.countOffline((err, subsCount, clientsCount) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve({ subsCount, clientsCount })
-        }
-      })
-    })
-  }
-
-  async function outgoingEnqueue (instance, sub, packet) {
-    return new Promise((resolve, reject) => {
-      instance.outgoingEnqueue(sub, packet, err => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve()
-        }
-      })
-    })
-  }
-
-  async function outgoingEnqueueCombi (instance, subs, packet) {
-    return new Promise((resolve, reject) => {
-      instance.outgoingEnqueueCombi(subs, packet, err => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve()
-        }
-      })
-    })
-  }
 
   test('remove subscriptions by client', async (t) => {
     t.plan(4)
@@ -388,7 +490,7 @@ function abstractPersistence (opts) {
       rap: true,
       nl: false
     }])
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('store and look up subscriptions by topic', async (t) => {
@@ -433,7 +535,7 @@ function abstractPersistence (opts) {
       rap: true,
       nl: false
     }])
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('get client list after subscriptions', async (t) => {
@@ -451,7 +553,7 @@ function abstractPersistence (opts) {
     const stream = instance.getClientList(subs[0].topic)
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [client1.id, client2.id])
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('get client list after an unsubscribe', async (t) => {
@@ -469,7 +571,7 @@ function abstractPersistence (opts) {
     const stream = instance.getClientList(subs[0].topic)
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [client1.id])
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('get subscriptions list after an unsubscribe', async (t) => {
@@ -486,7 +588,7 @@ function abstractPersistence (opts) {
     await removeSubscriptions(instance, client2, [subs[0].topic])
     const clients = await subscriptionsByTopic(instance, subs[0].topic)
     t.assert.deepEqual(clients[0].clientId, client1.id)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('QoS 0 subscriptions, restored but not matched', async (t) => {
@@ -525,7 +627,7 @@ function abstractPersistence (opts) {
       rap: true,
       nl: false
     }])
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('clean subscriptions', async (t) => {
@@ -549,7 +651,7 @@ function abstractPersistence (opts) {
     const { subsCount, clientsCount } = await countOffline(instance)
     t.assert.equal(subsCount, 0, 'no subscriptions added')
     t.assert.equal(clientsCount, 0, 'no clients added')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('clean subscriptions with no active subscriptions', async (t) => {
@@ -565,7 +667,7 @@ function abstractPersistence (opts) {
     const { subsCount, clientsCount } = await countOffline(instance)
     t.assert.equal(subsCount, 0, 'no subscriptions added')
     t.assert.equal(clientsCount, 0, 'no clients added')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('same topic, different QoS', async (t) => {
@@ -610,7 +712,7 @@ function abstractPersistence (opts) {
     const { subsCount, clientsCount } = await countOffline(instance)
     t.assert.equal(subsCount, 1, 'one subscription added')
     t.assert.equal(clientsCount, 1, 'one client added')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('replace subscriptions', async (t) => {
@@ -643,7 +745,7 @@ function abstractPersistence (opts) {
     await check(2)
     await check(1)
     await check(0)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('replace subscriptions in same call', async (t) => {
@@ -667,7 +769,7 @@ function abstractPersistence (opts) {
     const { subsCount, clientsCount } = await countOffline(instance)
     t.assert.equal(subsCount, 0, 'no subscriptions added')
     t.assert.equal(clientsCount, 1, 'one client added')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('store and count subscriptions', async (t) => {
@@ -706,7 +808,7 @@ function abstractPersistence (opts) {
     const { subsCount: subsCount5, clientsCount: clientsCount5 } = await countOffline(instance)
     t.assert.equal(subsCount5, 0, 'zero subscriptions added')
     t.assert.equal(clientsCount5, 0, 'zero clients added')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('count subscriptions with two clients', async (t) => {
@@ -745,7 +847,7 @@ function abstractPersistence (opts) {
     await remove(client2, ['hello'], 1, 1)
     await remove(client2, ['matteo'], 0, 1)
     await remove(client2, ['noqos'], 0, 0)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add duplicate subs to persistence for qos > 0', async (t) => {
@@ -768,7 +870,7 @@ function abstractPersistence (opts) {
     subs[0].clientId = client.id
     const subsForTopic = await subscriptionsByTopic(instance, topic)
     t.assert.deepEqual(subsForTopic, subs)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add duplicate subs to persistence for qos 0', async (t) => {
@@ -790,7 +892,7 @@ function abstractPersistence (opts) {
     t.assert.equal(reClient2, client, 'client must be the same')
     const { resubs: subsForClient } = await subscriptionsByClient(instance, client)
     t.assert.deepEqual(subsForClient, subs)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('get topic list after concurrent subscriptions of a client', async (t) => {
@@ -819,7 +921,7 @@ function abstractPersistence (opts) {
           const { resubs } = await subscriptionsByClient(instance, client)
           resubs.sort((a, b) => a.topic.localeCompare(b.topic, 'en'))
           t.assert.deepEqual(resubs, [subs1[0], subs2[0]])
-          doCleanup(t, instance)
+          await doCleanup(t, instance)
           resolve()
         }
       }
@@ -870,10 +972,10 @@ function abstractPersistence (opts) {
     }
 
     await outgoingEnqueue(instance, sub, packet)
-    const stream = instance.outgoingStream(client)
+    const stream = outgoingStream(instance, client)
     const list = await getArrayFromStream(stream)
     testPacket(t, list[0], expected)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add outgoing packet for multiple subs and stream to all', async (t) => {
@@ -920,14 +1022,14 @@ function abstractPersistence (opts) {
     }
 
     await outgoingEnqueueCombi(instance, subs, packet)
-    const stream = instance.outgoingStream(client)
+    const stream = outgoingStream(instance, client)
     const list = await getArrayFromStream(stream)
     testPacket(t, list[0], expected)
 
-    const stream2 = instance.outgoingStream(client2)
+    const stream2 = outgoingStream(instance, client2)
     const list2 = await getArrayFromStream(stream2)
     testPacket(t, list2[0], expected)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add outgoing packet as a string and pump', async (t) => {
@@ -961,9 +1063,9 @@ function abstractPersistence (opts) {
     }
     const queue = []
 
-    const updated1 = await asyncEnqueueAndUpdate(t, instance, client, sub, packet1, 42)
-    const updated2 = await asyncEnqueueAndUpdate(t, instance, client, sub, packet2, 43)
-    const stream = instance.outgoingStream(client)
+    const updated1 = await enqueueAndUpdate(t, instance, client, sub, packet1, 42)
+    const updated2 = await enqueueAndUpdate(t, instance, client, sub, packet2, 43)
+    const stream = outgoingStream(instance, client)
 
     async function clearQueue (data) {
       const { repacket } = await outgoingUpdate(instance, client, data)
@@ -971,11 +1073,14 @@ function abstractPersistence (opts) {
       queue.push(repacket)
     }
 
-    await streamForEach(stream, clearQueue)
+    const list = await getArrayFromStream(stream)
+    for (const data of list) {
+      await clearQueue(data)
+    }
     t.assert.equal(queue.length, 2)
     t.assert.deepEqual(deClassed(queue[0]), deClassed(updated1))
     t.assert.deepEqual(deClassed(queue[1]), deClassed(updated2))
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add outgoing packet as a string and stream', async (t) => {
@@ -1013,13 +1118,14 @@ function abstractPersistence (opts) {
     }
 
     await outgoingEnqueueCombi(instance, [sub], packet)
-    const stream = instance.outgoingStream(client)
+    const stream = outgoingStream(instance, client)
     const list = await getArrayFromStream(stream)
     testPacket(t, list[0], expected)
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add outgoing packet and stream it twice', async (t) => {
+    t.plan(5)
     const instance = await persistence(t)
     const sub = {
       clientId: 'abcde',
@@ -1054,48 +1160,15 @@ function abstractPersistence (opts) {
     }
 
     await outgoingEnqueueCombi(instance, [sub], packet)
-    const stream = instance.outgoingStream(client)
+    const stream = outgoingStream(instance, client)
     const list = await getArrayFromStream(stream)
     testPacket(t, list[0], expected)
-    const stream2 = instance.outgoingStream(client)
+    const stream2 = outgoingStream(instance, client)
     const list2 = await getArrayFromStream(stream2)
     testPacket(t, list2[0], expected)
     t.assert.notEqual(packet, expected, 'packet must be a different object')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
-
-  async function enqueueAndUpdate (t, instance, client, sub, packet, messageId) {
-    await outgoingEnqueueCombi(instance, [sub], packet)
-    const updated = new Packet(packet)
-    updated.messageId = messageId
-
-    const { reclient, repacket } = await outgoingUpdate(instance, client, updated)
-    t.assert.equal(reclient, client, 'client matches')
-    t.assert.equal(repacket, updated, 'packet matches')
-    return repacket
-  }
-
-  async function outgoingUpdate (instance, client, packet) {
-    return new Promise((resolve, reject) => {
-      instance.outgoingUpdate(client, packet, (err, reclient, repacket) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve({ reclient, repacket })
-        }
-      })
-    })
-  }
-
-  async function asyncEnqueueAndUpdate (t, instance, client, sub, packet, messageId) {
-    await outgoingEnqueueCombi(instance, [sub], packet)
-    const updated = new Packet(packet)
-    updated.messageId = messageId
-    const { reclient, repacket } = await outgoingUpdate(instance, client, updated)
-    t.assert.equal(reclient, client, 'client matches')
-    t.assert.equal(repacket, updated, 'packet matches')
-    return updated
-  }
 
   test('add outgoing packet and update messageId', async (t) => {
     t.plan(5)
@@ -1119,17 +1192,18 @@ function abstractPersistence (opts) {
     }
 
     const updated = await enqueueAndUpdate(t, instance, client, sub, packet, 42)
-    delete updated.messageId
-    const stream = instance.outgoingStream(client)
+    updated.messageId = undefined
+    const stream = outgoingStream(instance, client)
     const list = await getArrayFromStream(stream)
-    delete list[0].messageId
+    list[0].messageId = undefined
     t.assert.notEqual(list[0], updated, 'must not be the same object')
     t.assert.deepEqual(deClassed(list[0]), deClassed(updated), 'must return the packet')
     t.assert.equal(list.length, 1, 'must return only one packet')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('add 2 outgoing packet and clear messageId', async (t) => {
+    t.plan(10)
     const instance = await persistence(t)
     const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
@@ -1162,23 +1236,22 @@ function abstractPersistence (opts) {
 
     const updated1 = await enqueueAndUpdate(t, instance, client, sub, packet1, 42)
     const updated2 = await enqueueAndUpdate(t, instance, client, sub, packet2, 43)
-    instance.outgoingClearMessageId(client, updated1, async (err, packet) => {
-      t.assert.ifError(err)
-      t.assert.deepEqual(packet.messageId, 42, 'must have the same messageId')
-      t.assert.deepEqual(packet.payload.toString(), packet1.payload.toString(), 'must have original payload')
-      t.assert.deepEqual(packet.topic, packet1.topic, 'must have original topic')
-      const stream = instance.outgoingStream(client)
-      delete updated2.messageId
-      const list = await getArrayFromStream(stream)
-      delete list[0].messageId
-      t.assert.notEqual(list[0], updated2, 'must not be the same object')
-      t.assert.deepEqual(deClassed(list[0]), deClassed(updated2), 'must return the packet')
-      t.assert.equal(list.length, 1, 'must return only one packet')
-      doCleanup(t, instance)
-    })
+    const pkt = await outgoingClearMessageId(instance, client, updated1)
+    t.assert.deepEqual(pkt.messageId, 42, 'must have the same messageId')
+    t.assert.deepEqual(pkt.payload.toString(), packet1.payload.toString(), 'must have original payload')
+    t.assert.deepEqual(pkt.topic, packet1.topic, 'must have original topic')
+    const stream = outgoingStream(instance, client)
+    updated2.messageId = undefined
+    const list = await getArrayFromStream(stream)
+    list[0].messageId = undefined
+    t.assert.notEqual(list[0], updated2, 'must not be the same object')
+    t.assert.deepEqual(deClassed(list[0]), deClassed(updated2), 'must return the packet')
+    t.assert.equal(list.length, 1, 'must return only one packet')
+    await doCleanup(t, instance)
   })
 
   test('add many outgoing packets and clear messageIds', async (t) => {
+    // t.plan() is called below after we know the high watermark
     const instance = await persistence(t)
     const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
@@ -1196,64 +1269,43 @@ function abstractPersistence (opts) {
       retain: false
     }
 
-    function outStream (instance, client) {
-      return iterableStream(instance.outgoingStream(client))
-    }
-
     // we just need a stream to figure out the high watermark
-    const stream = outStream(instance, client)
+    const stream = (outgoingStream(instance, client))
     const total = stream.readableHighWaterMark * 2
-
-    function submitMessage (id) {
-      return new Promise((resolve, reject) => {
-        const p = new Packet(packet, instance.broker)
-        p.messageId = id
-        instance.outgoingEnqueue(sub, p, (err) => {
-          if (err) {
-            return reject(err)
-          }
-          instance.outgoingUpdate(client, p, resolve)
-        })
-      })
-    }
-
-    function clearMessage (p) {
-      return new Promise((resolve, reject) => {
-        instance.outgoingClearMessageId(client, p, (err, received) => {
-          t.assert.ifError(err)
-          t.assert.deepEqual(received, p, 'must return the packet')
-          resolve()
-        })
-      })
-    }
+    t.plan(total * 2)
 
     for (let i = 0; i < total; i++) {
-      await submitMessage(i)
+      const p = new Packet(packet, instance.broker)
+      p.messageId = i
+      await outgoingEnqueue(instance, sub, p)
+      await outgoingUpdate(instance, client, p)
     }
 
     let queued = 0
-    for await (const p of outStream(instance, client)) {
+    for await (const p of (outgoingStream(instance, client))) {
       if (p) {
         queued++
       }
     }
     t.assert.equal(queued, total, `outgoing queue must hold ${total} items`)
 
-    for await (const p of outStream(instance, client)) {
-      await clearMessage(p)
+    for await (const p of (outgoingStream(instance, client))) {
+      const received = await outgoingClearMessageId(instance, client, p)
+      t.assert.deepEqual(received, p, 'must return the packet')
     }
 
     let queued2 = 0
-    for await (const p of outStream(instance, client)) {
+    for await (const p of (outgoingStream(instance, client))) {
       if (p) {
         queued2++
       }
     }
     t.assert.equal(queued2, 0, 'outgoing queue is empty')
-    doCleanup(t, instance)
+    await doCleanup(t, instance)
   })
 
   test('update to publish w/ same messageId', async (t) => {
+    t.plan(5)
     const instance = await persistence(t)
     const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
@@ -1286,26 +1338,22 @@ function abstractPersistence (opts) {
       messageId: 42
     }
 
-    instance.outgoingEnqueue(sub, packet1, () => {
-      instance.outgoingEnqueue(sub, packet2, () => {
-        instance.outgoingUpdate(client, packet1, () => {
-          instance.outgoingUpdate(client, packet2, () => {
-            const stream = instance.outgoingStream(client)
-            getArrayFromStream(stream).then(list => {
-              t.assert.equal(list.length, 2, 'must have two items in queue')
-              t.assert.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
-              t.assert.equal(list[0].messageId, packet1.messageId, 'messageId must match')
-              t.assert.equal(list[1].brokerCounter, packet2.brokerCounter, 'brokerCounter must match')
-              t.assert.equal(list[1].messageId, packet2.messageId, 'messageId must match')
-              doCleanup(t, instance)
-            })
-          })
-        })
-      })
-    })
+    await outgoingEnqueue(instance, sub, packet1)
+    await outgoingEnqueue(instance, sub, packet2)
+    await outgoingUpdate(instance, client, packet1)
+    await outgoingUpdate(instance, client, packet2)
+    const stream = outgoingStream(instance, client)
+    const list = await getArrayFromStream(stream)
+    t.assert.equal(list.length, 2, 'must have two items in queue')
+    t.assert.equal(list[0].brokerCounter, packet1.brokerCounter, 'brokerCounter must match')
+    t.assert.equal(list[0].messageId, packet1.messageId, 'messageId must match')
+    t.assert.equal(list[1].brokerCounter, packet2.brokerCounter, 'brokerCounter must match')
+    t.assert.equal(list[1].messageId, packet2.messageId, 'messageId must match')
+    await doCleanup(t, instance)
   })
 
   test('update to pubrel', async (t) => {
+    t.plan(3)
     const instance = await persistence(t)
     const sub = {
       clientId: 'abcde', topic: 'hello', qos: 1
@@ -1325,36 +1373,27 @@ function abstractPersistence (opts) {
       brokerCounter: 42
     }
 
-    instance.outgoingEnqueueCombi([sub], packet, err => {
-      t.assert.ifError(err)
-      const updated = new Packet(packet)
-      updated.messageId = 42
+    await outgoingEnqueueCombi(instance, [sub], packet)
+    const updated = new Packet(packet)
+    updated.messageId = 42
+    const { reclient, repacket } = await outgoingUpdate(instance, client, updated)
+    t.assert.equal(reclient, client, 'client matches')
+    t.assert.equal(repacket, updated, 'packet matches')
 
-      instance.outgoingUpdate(client, updated, (err, reclient, repacket) => {
-        t.assert.ifError(err)
-        t.assert.equal(reclient, client, 'client matches')
-        t.assert.equal(repacket, updated, 'packet matches')
+    const pubrel = {
+      cmd: 'pubrel',
+      messageId: updated.messageId
+    }
 
-        const pubrel = {
-          cmd: 'pubrel',
-          messageId: updated.messageId
-        }
-
-        instance.outgoingUpdate(client, pubrel, err => {
-          t.assert.ifError(err)
-
-          const stream = instance.outgoingStream(client)
-
-          getArrayFromStream(stream).then(list => {
-            t.assert.deepEqual(list, [pubrel], 'must return the packet')
-            doCleanup(t, instance)
-          })
-        })
-      })
-    })
+    await outgoingUpdate(instance, client, pubrel)
+    const stream = outgoingStream(instance, client)
+    const list = await getArrayFromStream(stream)
+    t.assert.deepEqual(list, [pubrel], 'must return the packet')
+    await doCleanup(t, instance)
   })
 
   test('add incoming packet, get it, and clear with messageId', async (t) => {
+    t.plan(3)
     const instance = await persistence(t)
     const client = {
       id: 'abcde'
@@ -1369,40 +1408,35 @@ function abstractPersistence (opts) {
       retain: false,
       messageId: 42
     }
-
-    instance.incomingStorePacket(client, packet, err => {
-      t.assert.ifError(err)
-
-      instance.incomingGetPacket(client, {
-        messageId: packet.messageId
-      }, (err, retrieved) => {
-        t.assert.ifError(err)
-
-        // adjusting the objects so they match
-        delete retrieved.brokerCounter
-        delete retrieved.brokerId
-        delete packet.length
-        // strip the class identifier from the packet
-        const result = structuredClone(retrieved)
-        // Convert Uint8 to Buffer for comparison
-        result.payload = Buffer.from(result.payload)
-        t.assert.deepEqual(result, packet, 'retrieved packet must be deeply equal')
-        t.assert.notEqual(retrieved, packet, 'retrieved packet must not be the same object')
-
-        instance.incomingDelPacket(client, retrieved, err => {
-          t.assert.ifError(err)
-          instance.incomingGetPacket(client, {
-            messageId: packet.messageId
-          }, (err, retrieved) => {
-            t.assert.ok(err, 'must error')
-            doCleanup(t, instance)
-          })
-        })
-      })
+    await incomingStorePacket(instance, client, packet)
+    const retrieved = await incomingGetPacket(instance, client, {
+      messageId: packet.messageId
     })
+    // adjusting the objects so they match
+    delete retrieved.brokerCounter
+    delete retrieved.brokerId
+    delete packet.length
+    // strip the class identifier from the packet
+    const result = structuredClone(retrieved)
+    // Convert Uint8 to Buffer for comparison
+    result.payload = Buffer.from(result.payload)
+    t.assert.deepEqual(result, packet, 'retrieved packet must be deeply equal')
+    t.assert.notEqual(retrieved, packet, 'retrieved packet must not be the same object')
+    await incomingDelPacket(instance, client, retrieved)
+    incomingGetPacket(instance, client, {
+      messageId: packet.messageId
+    })
+      .then(() => {
+        t.assert.ok(false, 'must error')
+      })
+      .catch(async err => {
+        t.assert.ok(err, 'must error')
+        await doCleanup(t, instance)
+      })
   })
 
   test('store, fetch and delete will message', async (t) => {
+    t.plan(7)
     const instance = await persistence(t)
     const client = {
       id: '12345'
@@ -1414,30 +1448,23 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    instance.putWill(client, expected, (err, c) => {
-      t.assert.ifError(err, 'no error')
-      t.assert.equal(c, client, 'client matches')
-      instance.getWill(client, (err, packet, c) => {
-        t.assert.ifError(err, 'no error')
-        t.assert.deepEqual(packet, expected, 'will matches')
-        t.assert.equal(c, client, 'client matches')
-        client.brokerId = packet.brokerId
-        instance.delWill(client, (err, packet, c) => {
-          t.assert.ifError(err, 'no error')
-          t.assert.deepEqual(packet, expected, 'will matches')
-          t.assert.equal(c, client, 'client matches')
-          instance.getWill(client, (err, packet, c) => {
-            t.assert.ifError(err, 'no error')
-            t.assert.ok(!packet, 'no will after del')
-            t.assert.equal(c, client, 'client matches')
-            doCleanup(t, instance)
-          })
-        })
-      })
-    })
+    const c = await putWill(instance, client, expected)
+    t.assert.equal(c, client, 'client matches')
+    const { packet: p1, reClient: c1 } = await getWill(instance, client)
+    t.assert.deepEqual(p1, expected, 'will matches')
+    t.assert.equal(c1, client, 'client matches')
+    client.brokerId = p1.brokerId
+    const { packet: p2, reClient: c2 } = await delWill(instance, client)
+    t.assert.deepEqual(p2, expected, 'will matches')
+    t.assert.equal(c2, client, 'client matches')
+    const { packet: p3, reClient: c3 } = await getWill(instance, client)
+    t.assert.ok(!p3, 'no will after del')
+    t.assert.equal(c3, client, 'client matches')
+    await doCleanup(t, instance)
   })
 
   test('stream all will messages', async (t) => {
+    t.plan(3)
     const instance = await persistence(t)
     const client = {
       id: '12345',
@@ -1450,27 +1477,27 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    instance.putWill(client, toWrite, (err, c) => {
-      t.assert.ifError(err, 'no error')
-      t.assert.equal(c, client, 'client matches')
-      streamForEach(instance.streamWill(), (chunk) => {
-        t.assert.deepEqual(chunk, {
-          clientId: client.id,
-          brokerId: instance.broker.id,
-          topic: 'hello/died',
-          payload: Buffer.from('muahahha'),
-          qos: 0,
-          retain: true
-        }, 'packet matches')
-        instance.delWill(client, (err, result, client) => {
-          t.assert.ifError(err, 'no error')
-          doCleanup(t, instance)
-        })
-      })
-    })
+    const expected = {
+      clientId: client.id,
+      brokerId: instance.broker.id,
+      topic: 'hello/died',
+      payload: Buffer.from('muahahha'),
+      qos: 0,
+      retain: true
+    }
+
+    const c = await putWill(instance, client, toWrite)
+    t.assert.equal(c, client, 'client matches')
+    const stream = iterableStream(instance.streamWill())
+    const list = await getArrayFromStream(stream)
+    t.assert.equal(list.length, 1, 'must return only one packet')
+    t.assert.deepEqual(list[0], expected, 'packet matches')
+    await delWill(instance, client)
+    await doCleanup(t, instance)
   })
 
   test('stream all will message for unknown brokers', async (t) => {
+    t.plan(4)
     const instance = await persistence(t)
     const originalId = instance.broker.id
     const client = {
@@ -1493,32 +1520,28 @@ function abstractPersistence (opts) {
       qos: 0,
       retain: true
     }
+    const expected = {
+      clientId: client.id,
+      brokerId: originalId,
+      topic: 'hello/died42',
+      payload: Buffer.from('muahahha'),
+      qos: 0,
+      retain: true
+    }
 
-    instance.putWill(client, toWrite1, (err, c) => {
-      t.assert.ifError(err, 'no error')
-      t.assert.equal(c, client, 'client matches')
-      instance.broker.id = 'anotherBroker'
-      instance.putWill(anotherClient, toWrite2, (err, c) => {
-        t.assert.ifError(err, 'no error')
-        t.assert.equal(c, anotherClient, 'client matches')
-        streamForEach(instance.streamWill({
-          anotherBroker: Date.now()
-        }), (chunk) => {
-          t.assert.deepEqual(chunk, {
-            clientId: client.id,
-            brokerId: originalId,
-            topic: 'hello/died42',
-            payload: Buffer.from('muahahha'),
-            qos: 0,
-            retain: true
-          }, 'packet matches')
-          instance.delWill(client, (err, result, client) => {
-            t.assert.ifError(err, 'no error')
-            doCleanup(t, instance)
-          })
-        })
-      })
-    })
+    const c = await putWill(instance, client, toWrite1)
+    t.assert.equal(c, client, 'client matches')
+    instance.broker.id = 'anotherBroker'
+    const c2 = await putWill(instance, anotherClient, toWrite2)
+    t.assert.equal(c2, anotherClient, 'client matches')
+    const stream = iterableStream(instance.streamWill({
+      anotherBroker: Date.now()
+    }))
+    const list = await getArrayFromStream(stream)
+    t.assert.equal(list.length, 1, 'must return only one packet')
+    t.assert.deepEqual(list[0], expected, 'packet matches')
+    await delWill(instance, client)
+    await doCleanup(t, instance)
   })
 
   test('delete wills from dead brokers', async (t) => {
@@ -1534,16 +1557,12 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    instance.putWill(client, toWrite1, (err, c) => {
-      t.assert.ifError(err, 'no error')
-      t.assert.equal(c, client, 'client matches')
-      instance.broker.id = 'anotherBroker'
-      client.brokerId = instance.broker.id
-      instance.delWill(client, (err, result, client) => {
-        t.assert.ifError(err, 'no error')
-        doCleanup(t, instance)
-      })
-    })
+    const c = await putWill(instance, client, toWrite1)
+    t.assert.equal(c, client, 'client matches')
+    instance.broker.id = 'anotherBroker'
+    client.brokerId = instance.broker.id
+    await delWill(instance, client)
+    await doCleanup(t, instance)
   })
 
   test('do not error if unkown messageId in outoingClearMessageId', async (t) => {
@@ -1552,10 +1571,8 @@ function abstractPersistence (opts) {
       id: 'abc-123'
     }
 
-    instance.outgoingClearMessageId(client, 42, err => {
-      t.assert.ifError(err)
-      doCleanup(t, instance)
-    })
+    await outgoingClearMessageId(instance, client, 42)
+    await doCleanup(t, instance)
   })
 }
 
