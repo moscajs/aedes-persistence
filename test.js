@@ -25,5 +25,6 @@ function createAsyncMemory (opts) {
 
 abs({
   test,
-  persistence: createAsyncMemory
+  persistence: createAsyncMemory,
+  waitForReady: true
 })
