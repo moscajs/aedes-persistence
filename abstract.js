@@ -1,5 +1,4 @@
 const { Readable } = require('node:stream')
-const { promisify } = require('node:util')
 const Packet = require('aedes-packet')
 
 // promisified versions of the instance methods
@@ -219,8 +218,16 @@ function waitForEvent (obj, resolveEvt) {
 }
 
 async function doCleanup (t, instance) {
-  const instanceDestroy = promisify(instance.destroy).bind(instance)
-  await instanceDestroy()
+  const instanceDestroy = new Promise((resolve, reject) => {
+    instance.destroy((err) => {
+      if (err) {
+        reject(err)
+        return
+      }
+      resolve()
+    })
+  })
+  await instanceDestroy
   t.diagnostic('instance cleaned up')
 }
 
