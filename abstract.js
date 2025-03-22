@@ -310,13 +310,16 @@ function abstractPersistence (opts) {
 
     const instance = await _persistence()
     if (instance) {
+      // instance.broker must be set first because setting it triggers
+      // the call of instance._setup if aedes-cached-persistence is being used
+      // instance._setup then fires the 'ready'event
+      instance.broker = broker
       // Wait for ready event, if applicable, to ensure the persistence isn't
       // destroyed while it's still being set up.
       // https://github.com/mcollina/aedes-persistence-redis/issues/41
       if (waitForReady) {
         await waitForEvent(instance, 'ready')
       }
-      instance.broker = broker
       t.diagnostic('instance created')
       return instance
     }
