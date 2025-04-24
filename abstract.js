@@ -317,7 +317,7 @@ function abstractPersistence (opts) {
       // Wait for ready event, if applicable, to ensure the persistence isn't
       // destroyed while it's still being set up.
       // https://github.com/mcollina/aedes-persistence-redis/issues/41
-      if (waitForReady) {
+      if (waitForReady && !instance.ready) {
         await waitForEvent(instance, 'ready')
       }
       t.diagnostic('instance created')
