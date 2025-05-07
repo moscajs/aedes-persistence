@@ -1,5 +1,8 @@
+'use strict'
+
 const Packet = require('aedes-packet')
-const { PromisifiedPersistence, waitForEvent, getArrayFromStream } = require('./promisified.js')
+const { once } = require('node:events')
+const { PromisifiedPersistence, getArrayFromStream } = require('./promisified.js')
 
 // helper functions
 
@@ -73,7 +76,7 @@ function abstractPersistence (opts) {
       // destroyed while it's still being set up.
       // https://github.com/mcollina/aedes-persistence-redis/issues/41
       if (waitForReady && !instance.ready) {
-        await waitForEvent(instance, 'ready')
+        await once(instance, 'ready')
       }
       t.diagnostic('instance created')
       const prInstance = new PromisifiedPersistence(instance)

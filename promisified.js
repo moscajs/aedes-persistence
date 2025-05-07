@@ -1,3 +1,5 @@
+'use strict'
+
 // promisified versions of the persistence interface
 // to avoid deep callbacks while testing
 
@@ -272,14 +274,6 @@ class PromisifiedPersistence {
 // end of promisified versions ofthis.instance methods
 
 // helper functions
-function waitForEvent (obj, resolveEvt) {
-  return new Promise((resolve, reject) => {
-    obj.once(resolveEvt, () => {
-      resolve()
-    })
-    obj.once('error', reject)
-  })
-}
 
 // stream.toArray() sometimes returns undefined or [undefined] instead of []
 async function getArrayFromStream (stream) {
@@ -294,6 +288,5 @@ async function getArrayFromStream (stream) {
 
 module.exports = {
   PromisifiedPersistence,
-  waitForEvent,
   getArrayFromStream
 }
