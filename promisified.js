@@ -1,7 +1,7 @@
+'use strict'
+
 // promisified versions of the persistence interface
 // to avoid deep callbacks while testing
-
-'use strict'
 
 class PromisifiedPersistence {
   constructor (instance) {
