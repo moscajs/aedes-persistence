@@ -142,6 +142,11 @@ function abstractPersistence (opts) {
     await matchRetainedWithPattern(t, ['hello/+', 'other/hello'])
   })
 
+  test('look up retained messages with multiple wildcard patterns', async t => {
+    t.plan(1)
+    await matchRetainedWithPattern(t, ['hello/+', 'hel/#', 'hello/world/there/+'])
+  })
+
   test('store multiple retained messages in order', async (t) => {
     t.plan(1000)
     const prInstance = await persistence(t)
