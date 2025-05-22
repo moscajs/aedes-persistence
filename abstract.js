@@ -85,9 +85,9 @@ function abstractPersistence (opts) {
     throw new Error('no instance')
   }
 
-  async function matchRetainedWithPattern (t, pattern) {
+  async function matchRetainedWithPattern (t, pattern, opts) {
     const prInstance = await persistence(t)
-    const packet = await storeRetainedPacket(prInstance)
+    const packet = await storeRetainedPacket(prInstance, opts)
     let stream
     if (Array.isArray(pattern)) {
       stream = prInstance.createRetainedStreamCombi(pattern)
@@ -122,9 +122,29 @@ function abstractPersistence (opts) {
     await matchRetainedWithPattern(t, 'hello/+')
   })
 
+  test('look up retained messages with a + as first element', async t => {
+    t.plan(1)
+    await matchRetainedWithPattern(t, '+/world')
+  })
+
+  test('look up retained messages with +/#', async t => {
+    t.plan(1)
+    await matchRetainedWithPattern(t, '+/#')
+  })
+
+  test('look up retained messages with a + and # pattern with some in between', async t => {
+    t.plan(1)
+    await matchRetainedWithPattern(t, 'hello/+/world/#', { topic: 'hello/there/world/creatures' })
+  })
+
   test('look up retained messages with multiple patterns', async t => {
     t.plan(1)
     await matchRetainedWithPattern(t, ['hello/+', 'other/hello'])
+  })
+
+  test('look up retained messages with multiple wildcard patterns', async t => {
+    t.plan(1)
+    await matchRetainedWithPattern(t, ['hello/+', 'hel/#', 'hello/world/there/+'])
   })
 
   test('store multiple retained messages in order', async (t) => {
