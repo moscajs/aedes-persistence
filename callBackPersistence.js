@@ -2,7 +2,7 @@
 
 /* This module provides a callback layer for async persistence implementations */
 const QlobberSub = require('qlobber/aedes/qlobber-sub')
-const { Packet } = require('aedes-persistence')
+const { Packet } = require('aedes-packet')
 const { Readable } = require('node:stream')
 const { EventEmitter } = require('node:events')
 
