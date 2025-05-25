@@ -2,7 +2,7 @@ const { Readable } = require('node:stream')
 const QlobberSub = require('qlobber/aedes/qlobber-sub')
 const { QlobberTrue } = require('qlobber')
 const Packet = require('aedes-packet')
-const QlobberOpts = {
+const QLOBBER_OPTIONS = {
   wildcard_one: '+',
   wildcard_some: '#',
   separator: '/'
@@ -16,7 +16,7 @@ function * multiIterables (iterables) {
 }
 
 function * retainedMessagesByPattern (retained, pattern) {
-  const qlobber = new QlobberTrue(QlobberOpts)
+  const qlobber = new QlobberTrue(QLOBBER_OPTIONS)
   qlobber.add(pattern)
 
   for (const [topic, packet] of retained) {
@@ -50,7 +50,7 @@ class MemoryPersistence {
   #incoming
   #wills
   #clientsCount
-  #trie
+  _trie
 
   constructor () {
     // using Maps for convenience and security (risk on prototype polution)
@@ -65,7 +65,7 @@ class MemoryPersistence {
     // Map( clientId -> will )
     this.#wills = new Map()
     this.#clientsCount = 0
-    this.#trie = new QlobberSub(QlobberOpts)
+    this._trie = new QlobberSub(QLOBBER_OPTIONS)
   }
 
   async setup () {}
@@ -92,7 +92,7 @@ class MemoryPersistence {
 
   async addSubscriptions (client, subs) {
     let stored = this.#subscriptions.get(client.id)
-    const trie = this.#trie
+    const trie = this._trie
 
     if (!stored) {
       stored = new Map()
@@ -123,7 +123,7 @@ class MemoryPersistence {
 
   async removeSubscriptions (client, subs) {
     const stored = this.#subscriptions.get(client.id)
-    const trie = this.#trie
+    const trie = this._trie
 
     if (stored) {
       for (const topic of subs) {
@@ -155,15 +155,15 @@ class MemoryPersistence {
   }
 
   async countOffline () {
-    return { subsCount: this.#trie.subscriptionsCount, clientsCount: this.#clientsCount }
+    return { subsCount: this._trie.subscriptionsCount, clientsCount: this.#clientsCount }
   }
 
   async subscriptionsByTopic (pattern) {
-    return this.#trie.match(pattern)
+    return this._trie.match(pattern)
   }
 
   async cleanSubscriptions (client) {
-    const trie = this.#trie
+    const trie = this._trie
     const stored = this.#subscriptions.get(client.id)
 
     if (stored) {

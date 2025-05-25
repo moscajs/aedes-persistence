@@ -1,18 +1,9 @@
 'use strict'
 
 /* This module provides a callback layer for async persistence implementations */
-const QlobberSub = require('qlobber/aedes/qlobber-sub')
 const Packet = require('aedes-packet')
 const { Readable } = require('node:stream')
 const { EventEmitter } = require('node:events')
-
-// Configuration for the QlobberSub matcher
-const QLOBBER_OPTIONS = {
-  wildcard_one: '+',
-  wildcard_some: '#',
-  separator: '/',
-  match_empty_levels: true
-}
 
 // System topics for subscription management
 const TOPIC_ADD_SUBSCRIPTION = '$SYS/sub/add'
@@ -55,7 +46,8 @@ class CallBackPersistence extends EventEmitter {
     this.ready = false
     this.destroyed = false
     this.asyncPersistence = asyncInstanceFactory(opts)
-    this.broadcastSubscriptions = opts.broadcastSubscriptions
+    this.broadcastSubscriptions = opts.broadcastSubscriptions || this.asyncPersistence.broadcastSubscriptions
+    this._trie = this.asyncPersistence._trie
   }
 
   _onMessage (packet, cb) {
@@ -96,7 +88,6 @@ class CallBackPersistence extends EventEmitter {
   set broker (broker) {
     this._broker = broker
     if (this.broadcastSubscriptions) {
-      this._trie = new QlobberSub(QLOBBER_OPTIONS)
       this._waiting = new Map()
       this._onSubMessage = this._onMessage.bind(this)
       this.asyncPersistence._trie = this._trie
