@@ -71,66 +71,85 @@ class BroadcastPersistence {
     this.#waiting.set(getKey(client.id, isSub, topic), cb)
   }
 
-  addedSubscriptions (client, subs, cb) {
+  async addedSubscriptions (client, subs) {
     if (subs.length === 0) {
-      return cb(null, client)
+      return client
     }
 
-    let errored = false
+    return new Promise((resolve, reject) => {
+      let errored = false
 
-    this.#waitFor(client, SUBSCRIBE, subs[0].topic, (err) => {
-      if (!errored && err) {
-        return cb(err)
-      }
-      if (!errored) {
-        cb(null, client)
-      }
-    })
+      this.#waitFor(client, SUBSCRIBE, subs[0].topic, (err) => {
+        if (!errored && err) {
+          return reject(err)
+        }
+        if (!errored) {
+          resolve(client)
+        }
+      })
 
-    brokerPublish(this.#broker, TOPIC_ADD_SUBSCRIPTION, client.id, subs, (err) => {
-      if (err) {
-        errored = true
-        cb(err)
-      }
+      brokerPublish(this.#broker, TOPIC_ADD_SUBSCRIPTION, client.id, subs, (err) => {
+        if (err) {
+          errored = true
+          reject(err)
+        }
+      })
     })
   }
 
-  removedSubscriptions (client, subs, cb) {
-    let errored = false
+  async removedSubscriptions (client, subs) {
     let key = subs
 
     if (subs.length > 0) {
       key = subs[0]
     }
 
-    this.#waitFor(client, UNSUBSCRIBE, key, (err) => {
-      if (!errored && err) {
-        return cb(err)
-      }
-      if (!errored) {
-        cb(null, client)
-      }
-    })
+    return new Promise((resolve, reject) => {
+      let errored = false
 
-    const mappedSubs = subs.map(sub => { return { topic: sub } })
-    brokerPublish(this.#broker, TOPIC_REMOVE_SUBSCRIPTION, client.id, mappedSubs, (err) => {
-      if (err) {
-        errored = true
-        cb(err)
-      }
+      this.#waitFor(client, UNSUBSCRIBE, key, (err) => {
+        if (!errored && err) {
+          return reject(err)
+        }
+        if (!errored) {
+          resolve(client)
+        }
+      })
+
+      const mappedSubs = subs.map(sub => { return { topic: sub } })
+      brokerPublish(this.#broker, TOPIC_REMOVE_SUBSCRIPTION, client.id, mappedSubs, (err) => {
+        if (err) {
+          errored = true
+          reject(err)
+        }
+      })
     })
   }
 
-  brokerSubscribe (cb) {
-    this.#broker.subscribe(
-      TOPIC_SUBSCRIPTION_PATTERN,
-      this.#onSubMessage,
-      cb
-    )
+  async brokerSubscribe () {
+    return new Promise((resolve, reject) => {
+      this.#broker.subscribe(
+        TOPIC_SUBSCRIPTION_PATTERN,
+        this.#onSubMessage,
+        (err) => {
+          if (err) return reject(err)
+          resolve()
+        }
+      )
+    })
   }
 
-  brokerUnsubscribe (cb) {
-    this.#broker.unsubscribe(TOPIC_SUBSCRIPTION_PATTERN, this.#onSubMessage, cb)
+  async brokerUnsubscribe () {
+    return new Promise((resolve, reject) => {
+      this.#broker.unsubscribe(
+        TOPIC_SUBSCRIPTION_PATTERN,
+        this.#onSubMessage,
+        (err) => {
+          if (err) return reject(err)
+          resolve()
+        }
+      )
+    })
   }
 }
 

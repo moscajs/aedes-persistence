@@ -2,6 +2,8 @@ const { Readable } = require('node:stream')
 const QlobberSub = require('qlobber/aedes/qlobber-sub')
 const { QlobberTrue } = require('qlobber')
 const Packet = require('aedes-packet')
+const BroadcastPersistence = require('./broadcastPersistence.js')
+
 const QLOBBER_OPTIONS = {
   wildcard_one: '+',
   wildcard_some: '#',
@@ -50,9 +52,12 @@ class MemoryPersistence {
   #incoming
   #wills
   #clientsCount
+  #destroyed
+  #broadcastSubscriptions
   _trie
+  broker
 
-  constructor () {
+  constructor (opts = {}) {
     // using Maps for convenience and security (risk on prototype polution)
     // Map ( topic -> packet )
     this.#retained = new Map()
@@ -65,10 +70,18 @@ class MemoryPersistence {
     // Map( clientId -> will )
     this.#wills = new Map()
     this.#clientsCount = 0
+    this.#destroyed = false
+    this.#broadcastSubscriptions = opts.broadcastSubscriptions
     this._trie = new QlobberSub(QLOBBER_OPTIONS)
   }
 
-  async setup () {}
+  async setup (broker) {
+    this.broker = broker
+    if (this.#broadcastSubscriptions) {
+      this.broadcast = new BroadcastPersistence(broker, this._trie)
+      await this.broadcast.brokerSubscribe()
+    }
+  }
 
   async storeRetained (pkt) {
     const packet = Object.assign({}, pkt)
@@ -119,6 +132,9 @@ class MemoryPersistence {
       }
       stored.set(sub.topic, { qos: sub.qos, rh: sub.rh, rap: sub.rap, nl: sub.nl })
     }
+    if (this.#broadcastSubscriptions) {
+      await this.broadcast.addedSubscriptions(client, subs)
+    }
   }
 
   async removeSubscriptions (client, subs) {
@@ -140,6 +156,9 @@ class MemoryPersistence {
         this.#clientsCount--
         this.#subscriptions.delete(client.id)
       }
+    }
+    if (this.#broadcastSubscriptions) {
+      await this.broadcast.removedSubscriptions(client, subs)
     }
   }
 
@@ -296,6 +315,13 @@ class MemoryPersistence {
   }
 
   async destroy () {
+    if (this.#destroyed) {
+      throw new Error('destroyed called twice!')
+    }
+    this.#destroyed = true
+    if (this.#broadcastSubscriptions) {
+      await this.broadcast.brokerUnsubscribe()
+    }
     this.#retained = null
   }
 }

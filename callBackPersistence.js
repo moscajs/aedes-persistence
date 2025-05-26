@@ -3,7 +3,6 @@
 /* This module provides a callback layer for async persistence implementations */
 const { Readable } = require('node:stream')
 const { EventEmitter } = require('node:events')
-const BroadcastPersistence = require('./broadcastPersistence.js')
 
 function toValue (obj, prop) {
   if (typeof obj === 'object' && obj !== null && prop in obj) {
@@ -23,9 +22,7 @@ class CallBackPersistence extends EventEmitter {
     super()
 
     this.ready = false
-    this.destroyed = false
     this.asyncPersistence = asyncInstanceFactory(opts)
-    this.broadcastSubscriptions = opts.broadcastSubscriptions || this.asyncPersistence.broadcastSubscriptions
   }
 
   get broker () {
@@ -33,21 +30,15 @@ class CallBackPersistence extends EventEmitter {
   }
 
   set broker (broker) {
-    this.asyncPersistence.broker = broker
-    if (this.broadcastSubscriptions) {
-      this.broadcast = new BroadcastPersistence(broker, this.asyncPersistence._trie)
-      this.broadcast.brokerSubscribe(this._setup.bind(this))
-    } else {
-      this._setup()
-    }
+    this._setup(broker)
   }
 
-  _setup () {
+  _setup (broker) {
     if (this.ready) {
       return
     }
 
-    this.asyncPersistence.setup()
+    this.asyncPersistence.setup(broker)
       .then(() => {
         this.ready = true
         this.emit('ready')
@@ -103,12 +94,7 @@ class CallBackPersistence extends EventEmitter {
       return
     }
     this.asyncPersistence.addSubscriptions(client, subs)
-      .then(() => {
-        if (!this.broadcastSubscriptions) {
-          return cb(null, client)
-        }
-        this.broadcast.addedSubscriptions(client, subs, () => cb(null, client))
-      })
+      .then(() => cb(null, client))
       .catch(err => cb(err, client))
   }
 
@@ -119,12 +105,7 @@ class CallBackPersistence extends EventEmitter {
     }
 
     this.asyncPersistence.removeSubscriptions(client, subs)
-      .then(() => {
-        if (!this.broadcastSubscriptions) {
-          return cb(null, client)
-        }
-        this.broadcast.removedSubscriptions(client, subs, (err) => cb(err, client))
-      })
+      .then(() => cb(null, client))
       .catch(err => cb(err, client))
   }
 
@@ -154,23 +135,8 @@ class CallBackPersistence extends EventEmitter {
       this.once('ready', this.destroy.bind(this, cb))
       return
     }
-
-    if (this._destroyed) {
-      throw new Error('destroyed called twice!')
-    }
-
-    this._destroyed = true
-
-    if (this.broadcastSubscriptions) {
-      // Unsubscribe from broker topics
-      this.broadcast.brokerUnsubscribe(() => {
-        this.asyncPersistence.destroy()
-          .finally(cb) // swallow err in case of failure
-      })
-    } else {
-      this.asyncPersistence.destroy()
-        .finally(cb) // swallow err in case of failure
-    }
+    this.asyncPersistence.destroy()
+      .finally(cb) // swallow err in case of failure
   }
 
   outgoingEnqueue (sub, packet, cb) {
