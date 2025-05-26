@@ -1,17 +1,9 @@
 'use strict'
 
 /* This module provides a callback layer for async persistence implementations */
-const Packet = require('aedes-packet')
 const { Readable } = require('node:stream')
 const { EventEmitter } = require('node:events')
-
-// System topics for subscription management
-const TOPIC_ADD_SUBSCRIPTION = '$SYS/sub/add'
-const TOPIC_REMOVE_SUBSCRIPTION = '$SYS/sub/rm'
-const TOPIC_SUBSCRIPTION_PATTERN = '$SYS/sub/+'
-// Constants to increase readability
-const SUBSCRIBE = true
-const UNSUBSCRIBE = false
+const BroadcastPersistence = require('./broadcastPersistence.js')
 
 function toValue (obj, prop) {
   if (typeof obj === 'object' && obj !== null && prop in obj) {
@@ -20,24 +12,11 @@ function toValue (obj, prop) {
   return obj
 }
 
-function getKey (clientId, isSub, topic) {
-  return `${clientId}-${isSub ? 'sub_' : 'unsub_'}${topic || ''}`
-}
-
 function subToTopic (sub) {
   return sub.topic
 }
 
 function noop () {}
-
-function brokerPublish (broker, topic, clientId, subs, cb) {
-  const encoded = JSON.stringify({ clientId, subs })
-  const packet = new Packet({
-    topic,
-    payload: encoded
-  })
-  broker.publish(packet, cb)
-}
 
 class CallBackPersistence extends EventEmitter {
   constructor (asyncInstanceFactory, opts = {}) {
@@ -47,118 +26,35 @@ class CallBackPersistence extends EventEmitter {
     this.destroyed = false
     this.asyncPersistence = asyncInstanceFactory(opts)
     this.broadcastSubscriptions = opts.broadcastSubscriptions || this.asyncPersistence.broadcastSubscriptions
-    this._trie = this.asyncPersistence._trie
-  }
-
-  _onMessage (packet, cb) {
-    const decoded = JSON.parse(packet.payload)
-    const clientId = decoded.clientId
-    const isAddSubscription = packet.topic === TOPIC_ADD_SUBSCRIPTION
-
-    for (let i = 0; i < decoded.subs.length; i++) {
-      const sub = decoded.subs[i]
-      sub.clientId = clientId
-
-      if (isAddSubscription) {
-        if (sub.qos > 0) {
-          this._trie.add(sub.topic, sub)
-        } else {
-          this._trie.remove(sub.topic, sub)
-        }
-      } else if (packet.topic === TOPIC_REMOVE_SUBSCRIPTION) {
-        this._trie.remove(sub.topic, sub)
-      }
-    }
-
-    if (decoded.subs.length > 0) {
-      const key = getKey(clientId, isAddSubscription, decoded.subs[0].topic)
-      const waiting = this._waiting.get(key)
-      if (waiting) {
-        this._waiting.delete(key)
-        process.nextTick(waiting)
-      }
-    }
-    cb()
   }
 
   get broker () {
-    return this._broker
+    return this.asyncPersistence.broker
   }
 
   set broker (broker) {
-    this._broker = broker
+    this.asyncPersistence.broker = broker
     if (this.broadcastSubscriptions) {
-      this._waiting = new Map()
-      this._onSubMessage = this._onMessage.bind(this)
-      this.asyncPersistence._trie = this._trie
-      this.broker.subscribe(
-        TOPIC_SUBSCRIPTION_PATTERN,
-        this._onSubMessage,
-        this._setup.bind(this)
-      )
+      this.broadcast = new BroadcastPersistence(broker, this.asyncPersistence._trie)
+      this.broadcast.brokerSubscribe(this._setup.bind(this))
     } else {
       this._setup()
     }
   }
 
-  _waitFor (client, isSub, topic, cb) {
-    this._waiting.set(getKey(client.id, isSub, topic), cb)
-  }
-
-  _addedSubscriptions (client, subs, cb) {
-    if (!this.broadcastSubscriptions) {
-      return cb(null, client)
-    }
-    if (subs.length === 0) {
-      return cb(null, client)
+  _setup () {
+    if (this.ready) {
+      return
     }
 
-    let errored = false
-
-    this._waitFor(client, SUBSCRIBE, subs[0].topic, (err) => {
-      if (!errored && err) {
-        return cb(err)
-      }
-      if (!errored) {
-        cb(null, client)
-      }
-    })
-
-    brokerPublish(this._broker, TOPIC_ADD_SUBSCRIPTION, client.id, subs, (err) => {
-      if (err) {
-        errored = true
-        cb(err)
-      }
-    })
-  }
-
-  _removedSubscriptions (client, subs, cb) {
-    if (!this.broadcastSubscriptions) {
-      return cb(null, client)
-    }
-    let errored = false
-    let key = subs
-
-    if (subs.length > 0) {
-      key = subs[0]
-    }
-
-    this._waitFor(client, UNSUBSCRIBE, key, (err) => {
-      if (!errored && err) {
-        return cb(err)
-      }
-      if (!errored) {
-        cb(null, client)
-      }
-    })
-
-    const mappedSubs = subs.map(sub => { return { topic: sub } })
-    brokerPublish(this._broker, TOPIC_REMOVE_SUBSCRIPTION, client.id, mappedSubs, (err) => {
-      if (err) {
-        errored = true
-        cb(err)
-      }
-    })
+    this.asyncPersistence.setup()
+      .then(() => {
+        this.ready = true
+        this.emit('ready')
+      })
+      .catch(err => {
+        this.emit('error', err)
+      })
   }
 
   subscriptionsByTopic (topic, cb) {
@@ -181,22 +77,6 @@ class CallBackPersistence extends EventEmitter {
       const newSubs = subs.map(subToTopic)
       this.removeSubscriptions(client, newSubs, cb)
     })
-  }
-
-  _setup () {
-    if (this.ready) {
-      return
-    }
-    this.asyncPersistence.broker = this.broker
-
-    this.asyncPersistence.setup()
-      .then(() => {
-        this.ready = true
-        this.emit('ready')
-      })
-      .catch(err => {
-        this.emit('error', err)
-      })
   }
 
   storeRetained (packet, cb) {
@@ -224,7 +104,10 @@ class CallBackPersistence extends EventEmitter {
     }
     this.asyncPersistence.addSubscriptions(client, subs)
       .then(() => {
-        this._addedSubscriptions(client, subs, () => cb(null, client))
+        if (!this.broadcastSubscriptions) {
+          return cb(null, client)
+        }
+        this.broadcast.addedSubscriptions(client, subs, () => cb(null, client))
       })
       .catch(err => cb(err, client))
   }
@@ -237,7 +120,10 @@ class CallBackPersistence extends EventEmitter {
 
     this.asyncPersistence.removeSubscriptions(client, subs)
       .then(() => {
-        this._removedSubscriptions(client, subs, (err) => cb(err, client))
+        if (!this.broadcastSubscriptions) {
+          return cb(null, client)
+        }
+        this.broadcast.removedSubscriptions(client, subs, (err) => cb(err, client))
       })
       .catch(err => cb(err, client))
   }
@@ -277,7 +163,7 @@ class CallBackPersistence extends EventEmitter {
 
     if (this.broadcastSubscriptions) {
       // Unsubscribe from broker topics
-      this.broker.unsubscribe(TOPIC_SUBSCRIPTION_PATTERN, this._onSubMessage, () => {
+      this.broadcast.brokerUnsubscribe(() => {
         this.asyncPersistence.destroy()
           .finally(cb) // swallow err in case of failure
       })
