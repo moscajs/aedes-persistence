@@ -118,7 +118,7 @@ class CallBackPersistence extends EventEmitter {
     this.asyncPersistence.subscriptionsByClient(client)
       .then(results => {
         // promisified shim returns an object, true async only the resubs
-        const resubs = results?.resubs || results
+        const resubs = toValue(results, 'resubs')
         process.nextTick(cb, null, resubs.length > 0 ? resubs : null, client)
       })
       .catch(cb)
