@@ -17,6 +17,10 @@ class PromisifiedPersistence {
     this.instance.broker = newValue
   }
 
+  async setup(broker){
+    this.broker = broker
+  }
+
   storeRetained (packet) {
     return new Promise((resolve, reject) => {
       this.instance.storeRetained(packet, err => {
@@ -71,7 +75,7 @@ class PromisifiedPersistence {
         if (err) {
           reject(err)
         } else {
-          resolve({ resubs, reClient })
+          resolve(resubs === null ? [] : resubs)
         }
       })
     })
@@ -231,7 +235,7 @@ class PromisifiedPersistence {
         if (err) {
           reject(err)
         } else {
-          resolve({ packet, reClient })
+          resolve(packet)
         }
       })
     })
@@ -244,7 +248,7 @@ class PromisifiedPersistence {
         if (err) {
           reject(err)
         } else {
-          resolve({ packet, reClient })
+          resolve(packet)
         }
       })
     })

@@ -45,12 +45,8 @@ function deClassed (obj) {
   return Object.assign({}, obj)
 }
 
-// bridge the gap between promisified/callbackified and direct async
 async function subscriptionsByClient (prInstance, client) {
   const result = await prInstance.subscriptionsByClient(client)
-  if (result?.reClient) {
-    return result
-  }
   if (result.length === 0) {
     return { resubs: null, reClient: client }
   }
@@ -83,9 +79,6 @@ async function removeSubscriptions (prInstance, client, subs) {
 
 async function getWill (prInstance, client) {
   const result = await prInstance.getWill(client)
-  if (result?.reClient) {
-    return result
-  }
   return { packet: result, reClient: client }
 }
 
@@ -99,12 +92,8 @@ async function putWill (prInstance, client, packet) {
 
 async function delWill (prInstance, client) {
   const result = await prInstance.delWill(client)
-  if (result?.reClient) {
-    return result
-  }
   return { packet: result, reClient: client }
 }
-// end of bridge functions
 
 // start of abstractPersistence
 function abstractPersistence (opts) {
