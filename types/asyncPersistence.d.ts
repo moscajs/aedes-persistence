@@ -26,7 +26,7 @@ declare class MemoryPersistence {
 
   constructor();
 
-  setup(): Promise<void>;
+  setup(broker:any): Promise<void>;
 
   storeRetained(packet: AedesPacket): Promise<void>;
 

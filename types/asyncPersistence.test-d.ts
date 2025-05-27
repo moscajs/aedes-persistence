@@ -10,7 +10,7 @@ import type { AedesPersistenceSubscription, WillPacket } from '.';
 const persistence = new MemoryPersistence();
 
 // Test setup
-expectType<Promise<void>>(persistence.setup());
+expectType<Promise<void>>(persistence.setup({}));
 
 // Test storeRetained
 expectType<Promise<void>>(
