@@ -29,7 +29,7 @@ async function enqueueAndUpdate (t, prInstance, client, sub, packet, messageId) 
   const updated = new Packet(packet)
   updated.messageId = messageId
 
-  const { reclient, repacket } = await prInstance.outgoingUpdate(client, updated)
+  const { reclient, repacket } = await outgoingUpdate(prInstance, client, updated)
   t.assert.equal(reclient, client, 'client matches')
   t.assert.equal(repacket, updated, 'packet matches')
   return repacket
@@ -45,6 +45,67 @@ function deClassed (obj) {
   return Object.assign({}, obj)
 }
 
+// bridge the gap between promisified/callbackified and direct async
+async function subscriptionsByClient (prInstance, client) {
+  const result = await prInstance.subscriptionsByClient(client)
+  if (result?.reClient) {
+    return result
+  }
+  if (result.length === 0) {
+    return { resubs: null, reClient: client }
+  }
+  return { resubs: result, reClient: client }
+}
+
+async function outgoingUpdate (prInstance, client, updated) {
+  const result = await prInstance.outgoingUpdate(client, updated)
+  if (result?.reclient) {
+    return result
+  }
+  return { reclient: client, repacket: updated }
+}
+
+async function addSubscriptions (prInstance, client, subs) {
+  const reClient = await prInstance.addSubscriptions(client, subs)
+  if (reClient === undefined) {
+    return client
+  }
+  return reClient
+}
+
+async function removeSubscriptions (prInstance, client, subs) {
+  const reClient = await prInstance.removeSubscriptions(client, subs)
+  if (reClient === undefined) {
+    return client
+  }
+  return reClient
+}
+
+async function getWill (prInstance, client) {
+  const result = await prInstance.getWill(client)
+  if (result?.reClient) {
+    return result
+  }
+  return { packet: result, reClient: client }
+}
+
+async function putWill (prInstance, client, packet) {
+  const result = await prInstance.putWill(client, packet)
+  if (result !== undefined) {
+    return result
+  }
+  return client
+}
+
+async function delWill (prInstance, client) {
+  const result = await prInstance.delWill(client)
+  if (result?.reClient) {
+    return result
+  }
+  return { packet: result, reClient: client }
+}
+// end of bridge functions
+
 // start of abstractPersistence
 function abstractPersistence (opts) {
   const test = opts.test
@@ -54,6 +115,7 @@ function abstractPersistence (opts) {
   // requiring it here so it will not error for modules
   // not using the default emitter
   const buildEmitter = opts.buildEmitter || require('mqemitter')
+  const testAsync = opts.testAsync
 
   async function persistence (t) {
     const mq = buildEmitter()
@@ -68,19 +130,25 @@ function abstractPersistence (opts) {
 
     const instance = await _persistence()
     if (instance) {
+      if (!testAsync) {
       //  prInstance.broker must be set first because setting it triggers
       // the call of instance._setup if aedes-cached-persistence is being used
       // instance._setup then fires the 'ready'event
-      instance.broker = broker
-      // Wait for ready event, if applicable, to ensure the persistence isn't
-      // destroyed while it's still being set up.
-      // https://github.com/mcollina/aedes-persistence-redis/issues/41
-      if (waitForReady && !instance.ready) {
-        await once(instance, 'ready')
+        instance.broker = broker
+        // Wait for ready event, if applicable, to ensure the persistence isn't
+        // destroyed while it's still being set up.
+        // https://github.com/mcollina/aedes-persistence-redis/issues/41
+        if (waitForReady && !instance.ready) {
+          await once(instance, 'ready')
+        }
+        t.diagnostic('instance created')
+        return new PromisifiedPersistence(instance)
       }
+      // on async persistence the broker is passed to setup
+      // no ready event
+      await instance.setup(broker)
       t.diagnostic('instance created')
-      const prInstance = new PromisifiedPersistence(instance)
-      return prInstance
+      return instance
     }
     throw new Error('no instance')
   }
@@ -240,9 +308,9 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    const reClient = await prInstance.addSubscriptions(client, subs)
+    const reClient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient, client, 'client must be the same')
-    const { resubs, reClient: reClient2 } = await prInstance.subscriptionsByClient(client)
+    const { resubs, reClient: reClient2 } = await subscriptionsByClient(prInstance, client)
     t.assert.equal(reClient2, client, 'client must be the same')
     t.assert.deepEqual(resubs, subs)
     await doCleanup(t, prInstance)
@@ -266,11 +334,11 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    const reclient1 = await prInstance.addSubscriptions(client, subs)
+    const reclient1 = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reclient1, client, 'client must be the same')
-    const reClient2 = await prInstance.removeSubscriptions(client, ['hello'])
+    const reClient2 = await removeSubscriptions(prInstance, client, ['hello'])
     t.assert.equal(reClient2, client, 'client must be the same')
-    const { resubs, reClient } = await prInstance.subscriptionsByClient(client)
+    const { resubs, reClient } = await subscriptionsByClient(prInstance, client)
     t.assert.equal(reClient, client, 'client must be the same')
     t.assert.deepEqual(resubs, [{
       topic: 'matteo',
@@ -306,7 +374,7 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    const reclient = await prInstance.addSubscriptions(client, subs)
+    const reclient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reclient, client, 'client must be the same')
     const resubs = await prInstance.subscriptionsByTopic('hello')
     t.assert.deepEqual(resubs, [{
@@ -337,8 +405,8 @@ function abstractPersistence (opts) {
       qos: 1
     }]
 
-    await prInstance.addSubscriptions(client1, subs)
-    await prInstance.addSubscriptions(client2, subs)
+    await addSubscriptions(prInstance, client1, subs)
+    await addSubscriptions(prInstance, client2, subs)
     const stream = prInstance.getClientList(subs[0].topic)
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [client1.id, client2.id])
@@ -354,9 +422,9 @@ function abstractPersistence (opts) {
       topic: 'helloagain',
       qos: 1
     }]
-    await prInstance.addSubscriptions(client1, subs)
-    await prInstance.addSubscriptions(client2, subs)
-    await prInstance.removeSubscriptions(client2, [subs[0].topic])
+    await addSubscriptions(prInstance, client1, subs)
+    await addSubscriptions(prInstance, client2, subs)
+    await removeSubscriptions(prInstance, client2, [subs[0].topic])
     const stream = prInstance.getClientList(subs[0].topic)
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [client1.id])
@@ -372,9 +440,9 @@ function abstractPersistence (opts) {
       topic: 'helloagain',
       qos: 1
     }]
-    await prInstance.addSubscriptions(client1, subs)
-    await prInstance.addSubscriptions(client2, subs)
-    await prInstance.removeSubscriptions(client2, [subs[0].topic])
+    await addSubscriptions(prInstance, client1, subs)
+    await addSubscriptions(prInstance, client2, subs)
+    await removeSubscriptions(prInstance, client2, [subs[0].topic])
     const clients = await prInstance.subscriptionsByTopic(subs[0].topic)
     t.assert.deepEqual(clients[0].clientId, client1.id)
     await doCleanup(t, prInstance)
@@ -404,8 +472,8 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    await prInstance.addSubscriptions(client, subs)
-    const { resubs } = await prInstance.subscriptionsByClient(client)
+    await addSubscriptions(prInstance, client, subs)
+    const { resubs } = await subscriptionsByClient(prInstance, client)
     t.assert.deepEqual(resubs, subs)
     const resubs2 = await prInstance.subscriptionsByTopic('hello')
     t.assert.deepEqual(resubs2, [{
@@ -431,11 +499,11 @@ function abstractPersistence (opts) {
       qos: 1
     }]
 
-    await prInstance.addSubscriptions(client, subs)
+    await addSubscriptions(prInstance, client, subs)
     await prInstance.cleanSubscriptions(client)
     const resubs = await prInstance.subscriptionsByTopic('hello')
     t.assert.deepEqual(resubs, [], 'no subscriptions')
-    const { resubs: resubs2 } = await prInstance.subscriptionsByClient(client)
+    const { resubs: resubs2 } = await subscriptionsByClient(prInstance, client)
     t.assert.deepEqual(resubs2, null, 'no subscriptions')
     const { subsCount, clientsCount } = await prInstance.countOffline()
     t.assert.equal(subsCount, 0, 'no subscriptions added')
@@ -451,7 +519,7 @@ function abstractPersistence (opts) {
     await prInstance.cleanSubscriptions(client)
     const resubs = await prInstance.subscriptionsByTopic('hello')
     t.assert.deepEqual(resubs, [], 'no subscriptions')
-    const { resubs: resubs2 } = await prInstance.subscriptionsByClient(client)
+    const { resubs: resubs2 } = await subscriptionsByClient(prInstance, client)
     t.assert.deepEqual(resubs2, null, 'no subscriptions')
     const { subsCount, clientsCount } = await prInstance.countOffline()
     t.assert.equal(subsCount, 0, 'no subscriptions added')
@@ -477,9 +545,9 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    const reClient = await prInstance.addSubscriptions(client, subs)
+    const reClient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient, client, 'client must be the same')
-    const { resubs } = await prInstance.subscriptionsByClient(client)
+    const { resubs } = await subscriptionsByClient(prInstance, client)
     t.assert.deepEqual(resubs, [{
       topic: 'hello',
       qos: 1,
@@ -514,9 +582,9 @@ function abstractPersistence (opts) {
 
     async function check (qos) {
       sub.qos = subByTopic.qos = qos
-      const reClient = await prInstance.addSubscriptions(client, [sub])
+      const reClient = await addSubscriptions(prInstance, client, [sub])
       t.assert.equal(reClient, client, 'client must be the same')
-      const { resubs } = await prInstance.subscriptionsByClient(client)
+      const { resubs } = await subscriptionsByClient(prInstance, client)
       t.assert.deepEqual(resubs, [sub])
       const subsForTopic = await prInstance.subscriptionsByTopic(topic)
       t.assert.deepEqual(subsForTopic, qos === 0 ? [] : [subByTopic])
@@ -549,9 +617,9 @@ function abstractPersistence (opts) {
       { topic, qos: 1, rh: 0, rap: true, nl: false },
       { topic, qos: 0, rh: 0, rap: true, nl: false }
     ]
-    const reClient = await prInstance.addSubscriptions(client, subs)
+    const reClient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient, client, 'client must be the same')
-    const { resubs: subsForClient } = await prInstance.subscriptionsByClient(client)
+    const { resubs: subsForClient } = await subscriptionsByClient(prInstance, client)
     t.assert.deepEqual(subsForClient, [{ topic, qos: 0, rh: 0, rap: true, nl: false }])
     const subsForTopic = await prInstance.subscriptionsByTopic(topic)
     t.assert.deepEqual(subsForTopic, [])
@@ -576,24 +644,24 @@ function abstractPersistence (opts) {
       qos: 0
     }]
 
-    const reclient = await prInstance.addSubscriptions(client, subs)
+    const reclient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reclient, client, 'client must be the same')
     const { subsCount, clientsCount } = await prInstance.countOffline()
     t.assert.equal(subsCount, 2, 'two subscriptions added')
     t.assert.equal(clientsCount, 1, 'one client added')
-    await prInstance.removeSubscriptions(client, ['hello'])
+    await removeSubscriptions(prInstance, client, ['hello'])
     const { subsCount: subsCount2, clientsCount: clientsCount2 } = await prInstance.countOffline()
     t.assert.equal(subsCount2, 1, 'one subscription added')
     t.assert.equal(clientsCount2, 1, 'one client added')
-    await prInstance.removeSubscriptions(client, ['matteo'])
+    await removeSubscriptions(prInstance, client, ['matteo'])
     const { subsCount: subsCount3, clientsCount: clientsCount3 } = await prInstance.countOffline()
     t.assert.equal(subsCount3, 0, 'zero subscriptions added')
     t.assert.equal(clientsCount3, 1, 'one client added')
-    await prInstance.removeSubscriptions(client, ['noqos'])
+    await removeSubscriptions(prInstance, client, ['noqos'])
     const { subsCount: subsCount4, clientsCount: clientsCount4 } = await prInstance.countOffline()
     t.assert.equal(subsCount4, 0, 'zero subscriptions added')
     t.assert.equal(clientsCount4, 0, 'zero clients added')
-    await prInstance.removeSubscriptions(client, ['noqos'])
+    await removeSubscriptions(prInstance, client, ['noqos'])
     const { subsCount: subsCount5, clientsCount: clientsCount5 } = await prInstance.countOffline()
     t.assert.equal(subsCount5, 0, 'zero subscriptions added')
     t.assert.equal(clientsCount5, 0, 'zero clients added')
@@ -617,16 +685,16 @@ function abstractPersistence (opts) {
     }]
 
     async function remove (client, subs, expectedSubs, expectedClients) {
-      const reClient = await prInstance.removeSubscriptions(client, subs)
+      const reClient = await removeSubscriptions(prInstance, client, subs)
       t.assert.equal(reClient, client, 'client must be the same')
       const { subsCount, clientsCount } = await prInstance.countOffline()
       t.assert.equal(subsCount, expectedSubs, 'subscriptions added')
       t.assert.equal(clientsCount, expectedClients, 'clients added')
     }
 
-    const reClient1 = await prInstance.addSubscriptions(client1, subs)
+    const reClient1 = await addSubscriptions(prInstance, client1, subs)
     t.assert.equal(reClient1, client1, 'client must be the same')
-    const reClient2 = await prInstance.addSubscriptions(client2, subs)
+    const reClient2 = await addSubscriptions(prInstance, client2, subs)
     t.assert.equal(reClient2, client2, 'client must be the same')
     await remove(client1, ['foobar'], 4, 2)
     await remove(client1, ['hello'], 3, 2)
@@ -652,9 +720,9 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    const reClient = await prInstance.addSubscriptions(client, subs)
+    const reClient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient, client, 'client must be the same')
-    const reClient2 = await prInstance.addSubscriptions(client, subs)
+    const reClient2 = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient2, client, 'client must be the same')
     subs[0].clientId = client.id
     const subsForTopic = await prInstance.subscriptionsByTopic(topic)
@@ -675,11 +743,11 @@ function abstractPersistence (opts) {
       nl: false
     }]
 
-    const reClient = await prInstance.addSubscriptions(client, subs)
+    const reClient = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient, client, 'client must be the same')
-    const reClient2 = await prInstance.addSubscriptions(client, subs)
+    const reClient2 = await addSubscriptions(prInstance, client, subs)
     t.assert.equal(reClient2, client, 'client must be the same')
-    const { resubs: subsForClient } = await prInstance.subscriptionsByClient(client)
+    const { resubs: subsForClient } = await subscriptionsByClient(prInstance, client)
     t.assert.deepEqual(subsForClient, subs)
     await doCleanup(t, prInstance)
   })
@@ -702,9 +770,9 @@ function abstractPersistence (opts) {
       rap: true,
       nl: false
     }]
-    await prInstance.addSubscriptions(client, subs1)
-    await prInstance.addSubscriptions(client, subs2)
-    const { resubs } = await prInstance.subscriptionsByClient(client)
+    await addSubscriptions(prInstance, client, subs1)
+    await addSubscriptions(prInstance, client, subs2)
+    const { resubs } = await subscriptionsByClient(prInstance, client)
     resubs.sort((a, b) => a.topic.localeCompare(b.topic, 'en'))
     t.assert.deepEqual(resubs, [subs1[0], subs2[0]])
     await doCleanup(t, prInstance)
@@ -841,7 +909,7 @@ function abstractPersistence (opts) {
     const stream = prInstance.outgoingStream(client)
 
     async function clearQueue (data) {
-      const { repacket } = await prInstance.outgoingUpdate(client, data)
+      const { repacket } = await outgoingUpdate(prInstance, client, data)
       t.diagnostic('packet received')
       queue.push(repacket)
     }
@@ -1051,7 +1119,7 @@ function abstractPersistence (opts) {
       const p = new Packet(packet, prInstance.broker)
       p.messageId = i
       await prInstance.outgoingEnqueue(sub, p)
-      await prInstance.outgoingUpdate(client, p)
+      await outgoingUpdate(prInstance, client, p)
     }
 
     const queued = await getArrayFromStream(prInstance.outgoingStream(client))
@@ -1103,8 +1171,8 @@ function abstractPersistence (opts) {
 
     await prInstance.outgoingEnqueue(sub, packet1)
     await prInstance.outgoingEnqueue(sub, packet2)
-    await prInstance.outgoingUpdate(client, packet1)
-    await prInstance.outgoingUpdate(client, packet2)
+    await outgoingUpdate(prInstance, client, packet1)
+    await outgoingUpdate(prInstance, client, packet2)
     const stream = prInstance.outgoingStream(client)
     const list = await getArrayFromStream(stream)
     t.assert.equal(list.length, 2, 'must have two items in queue')
@@ -1139,7 +1207,7 @@ function abstractPersistence (opts) {
     await prInstance.outgoingEnqueueCombi([sub], packet)
     const updated = new Packet(packet)
     updated.messageId = 42
-    const { reclient, repacket } = await prInstance.outgoingUpdate(client, updated)
+    const { reclient, repacket } = await outgoingUpdate(prInstance, client, updated)
     t.assert.equal(reclient, client, 'client matches')
     t.assert.equal(repacket, updated, 'packet matches')
 
@@ -1148,7 +1216,7 @@ function abstractPersistence (opts) {
       messageId: updated.messageId
     }
 
-    await prInstance.outgoingUpdate(client, pubrel)
+    await outgoingUpdate(prInstance, client, pubrel)
     const stream = prInstance.outgoingStream(client)
     const list = await getArrayFromStream(stream)
     t.assert.deepEqual(list, [pubrel], 'must return the packet')
@@ -1211,16 +1279,16 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    const c = await prInstance.putWill(client, expected)
+    const c = await putWill(prInstance, client, expected)
     t.assert.equal(c, client, 'client matches')
-    const { packet: p1, reClient: c1 } = await prInstance.getWill(client)
+    const { packet: p1, reClient: c1 } = await getWill(prInstance, client)
     t.assert.deepEqual(p1, expected, 'will matches')
     t.assert.equal(c1, client, 'client matches')
     client.brokerId = p1.brokerId
-    const { packet: p2, reClient: c2 } = await prInstance.delWill(client)
+    const { packet: p2, reClient: c2 } = await delWill(prInstance, client)
     t.assert.deepEqual(p2, expected, 'will matches')
     t.assert.equal(c2, client, 'client matches')
-    const { packet: p3, reClient: c3 } = await prInstance.getWill(client)
+    const { packet: p3, reClient: c3 } = await getWill(prInstance, client)
     t.assert.ok(!p3, 'no will after del')
     t.assert.equal(c3, client, 'client matches')
     await doCleanup(t, prInstance)
@@ -1249,13 +1317,13 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    const c = await prInstance.putWill(client, toWrite)
+    const c = await putWill(prInstance, client, toWrite)
     t.assert.equal(c, client, 'client matches')
     const stream = prInstance.streamWill()
     const list = await getArrayFromStream(stream)
     t.assert.equal(list.length, 1, 'must return only one packet')
     t.assert.deepEqual(list[0], expected, 'packet matches')
-    await prInstance.delWill(client)
+    await delWill(prInstance, client)
     await doCleanup(t, prInstance)
   })
 
@@ -1292,10 +1360,10 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    const c = await prInstance.putWill(client, toWrite1)
+    const c = await putWill(prInstance, client, toWrite1)
     t.assert.equal(c, client, 'client matches')
     prInstance.broker.id = 'anotherBroker'
-    const c2 = await prInstance.putWill(anotherClient, toWrite2)
+    const c2 = await putWill(prInstance, anotherClient, toWrite2)
     t.assert.equal(c2, anotherClient, 'client matches')
     const stream = prInstance.streamWill({
       anotherBroker: Date.now()
@@ -1303,7 +1371,7 @@ function abstractPersistence (opts) {
     const list = await getArrayFromStream(stream)
     t.assert.equal(list.length, 1, 'must return only one packet')
     t.assert.deepEqual(list[0], expected, 'packet matches')
-    await prInstance.delWill(client)
+    await delWill(prInstance, client)
     await doCleanup(t, prInstance)
   })
 
@@ -1320,11 +1388,11 @@ function abstractPersistence (opts) {
       retain: true
     }
 
-    const c = await prInstance.putWill(client, toWrite1)
+    const c = await putWill(prInstance, client, toWrite1)
     t.assert.equal(c, client, 'client matches')
     prInstance.broker.id = 'anotherBroker'
     client.brokerId = prInstance.broker.id
-    await prInstance.delWill(client)
+    await delWill(prInstance, client)
     await doCleanup(t, prInstance)
   })
 
