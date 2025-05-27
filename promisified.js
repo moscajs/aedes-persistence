@@ -17,7 +17,7 @@ class PromisifiedPersistence {
     this.instance.broker = newValue
   }
 
-  async setup(broker){
+  async setup (broker) {
     this.broker = broker
   }
 
