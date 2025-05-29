@@ -3,8 +3,22 @@
 const Packet = require('aedes-packet')
 const { once } = require('node:events')
 const { PromisifiedPersistence, getArrayFromStream } = require('./promisified.js')
+const READY_TIMEOUT = 60000 // if waiting for "ready" event, timeout after 60 secs
 
 // helper functions
+function withTimeout (promise, timeoutMs, err) {
+  // Create a promise that rejects after a specified timeout
+  let timeoutId
+  const timeoutPromise = new Promise((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(err)
+    }, timeoutMs)
+  })
+
+  // Race the original promise against the timeout promise,
+  return Promise.race([promise, timeoutPromise])
+    .finally(() => clearTimeout(timeoutId)) // clear the timeout to avoid waiting if the promise resolves
+}
 
 async function doCleanup (t, prInstance) {
   await prInstance.destroy()
@@ -128,7 +142,7 @@ function abstractPersistence (opts) {
         // destroyed while it's still being set up.
         // https://github.com/mcollina/aedes-persistence-redis/issues/41
         if (waitForReady && !instance.ready) {
-          await once(instance, 'ready')
+          await withTimeout(once(instance, 'ready'), READY_TIMEOUT, new Error('setup persistence timed out'))
         }
         t.diagnostic('instance created')
         return new PromisifiedPersistence(instance)
