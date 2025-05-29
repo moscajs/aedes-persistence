@@ -54,8 +54,8 @@ class MemoryPersistence {
   #clientsCount
   #destroyed
   #broadcastSubscriptions
-  _trie
-  broker
+  #trie
+  #broker
 
   constructor (opts = {}) {
     // using Maps for convenience and security (risk on prototype polution)
@@ -72,13 +72,18 @@ class MemoryPersistence {
     this.#clientsCount = 0
     this.#destroyed = false
     this.#broadcastSubscriptions = opts.broadcastSubscriptions
-    this._trie = new QlobberSub(QLOBBER_OPTIONS)
+    this.#trie = new QlobberSub(QLOBBER_OPTIONS)
+  }
+
+  // for testing we need access to the broker
+  get broker () {
+    return this.#broker
   }
 
   async setup (broker) {
-    this.broker = broker
+    this.#broker = broker
     if (this.#broadcastSubscriptions) {
-      this.broadcast = new BroadcastPersistence(broker, this._trie)
+      this.broadcast = new BroadcastPersistence(broker, this.#trie)
       await this.broadcast.brokerSubscribe()
     }
   }
@@ -105,7 +110,7 @@ class MemoryPersistence {
 
   async addSubscriptions (client, subs) {
     let stored = this.#subscriptions.get(client.id)
-    const trie = this._trie
+    const trie = this.#trie
 
     if (!stored) {
       stored = new Map()
@@ -139,7 +144,7 @@ class MemoryPersistence {
 
   async removeSubscriptions (client, subs) {
     const stored = this.#subscriptions.get(client.id)
-    const trie = this._trie
+    const trie = this.#trie
 
     if (stored) {
       for (const topic of subs) {
@@ -174,15 +179,15 @@ class MemoryPersistence {
   }
 
   async countOffline () {
-    return { subsCount: this._trie.subscriptionsCount, clientsCount: this.#clientsCount }
+    return { subsCount: this.#trie.subscriptionsCount, clientsCount: this.#clientsCount }
   }
 
   async subscriptionsByTopic (pattern) {
-    return this._trie.match(pattern)
+    return this.#trie.match(pattern)
   }
 
   async cleanSubscriptions (client) {
-    const trie = this._trie
+    const trie = this.#trie
     const stored = this.#subscriptions.get(client.id)
 
     if (stored) {
@@ -237,7 +242,7 @@ class MemoryPersistence {
         return
       }
     }
-    throw new Error('no such packet here')
+    throw new Error('no such packet')
   }
 
   async outgoingClearMessageId (client, packet, cb) {
@@ -291,7 +296,7 @@ class MemoryPersistence {
   }
 
   async putWill (client, packet) {
-    packet.brokerId = this.broker.id
+    packet.brokerId = this.#broker.id
     packet.clientId = client.id
     this.#wills.set(client.id, packet)
   }
