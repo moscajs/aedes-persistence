@@ -173,6 +173,12 @@ function abstractPersistence (opts) {
   }
 
   // testing starts here
+  test('verify setup() method is async', async t => {
+    t.plan(1)
+    const prInstance = await persistence(t)
+    t.assert.equal(prInstance.setup.constructor.name, 'AsyncFunction', '.setup() must be an async function')
+  })
+
   test('store and look up retained messages', async t => {
     t.plan(1)
     await matchRetainedWithPattern(t, 'hello/world')

@@ -17,10 +17,6 @@ class CallBackPersistence extends EventEmitter {
   }
 
   set broker (broker) {
-    this.setup(broker)
-  }
-
-  setup (broker) {
     if (this.ready) {
       return
     }
@@ -33,6 +29,10 @@ class CallBackPersistence extends EventEmitter {
       .catch(err => {
         this.emit('error', err)
       })
+  }
+
+  async setup (broker) {
+    return this.asyncPersistence.setup(broker)
   }
 
   subscriptionsByTopic (topic, cb) {
