@@ -31,7 +31,7 @@ class CallBackPersistence extends EventEmitter {
       })
   }
 
-  setup (broker) {
+  async setup (broker) {
     return this.asyncPersistence.setup(broker)
   }
 
