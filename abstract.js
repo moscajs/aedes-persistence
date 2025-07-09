@@ -177,6 +177,7 @@ function abstractPersistence (opts) {
     t.plan(1)
     const prInstance = await persistence(t)
     t.assert.equal(prInstance.setup.constructor.name, 'AsyncFunction', '.setup() must be an async function')
+    await doCleanup(t, prInstance)
   })
 
   test('store and look up retained messages', async t => {
