@@ -120,14 +120,17 @@ class MemoryPersistence {
 
     for (const sub of subs) {
       const storedSub = stored.get(sub.topic)
+      const record = { qos: sub.qos, rh: sub.rh, rap: sub.rap, nl: sub.nl }
+      // MQTT 5.0 Subscription Identifier: only persisted when present so that
+      // pre-v5 subscriptions keep their exact stored shape.
+      if (sub.subscriptionIdentifier !== undefined) {
+        record.subscriptionIdentifier = sub.subscriptionIdentifier
+      }
       if (sub.qos > 0) {
         trie.add(sub.topic, {
           clientId: client.id,
           topic: sub.topic,
-          qos: sub.qos,
-          rh: sub.rh,
-          rap: sub.rap,
-          nl: sub.nl
+          ...record
         })
       } else if (storedSub?.qos > 0) {
         trie.remove(sub.topic, {
@@ -135,7 +138,7 @@ class MemoryPersistence {
           topic: sub.topic
         })
       }
-      stored.set(sub.topic, { qos: sub.qos, rh: sub.rh, rap: sub.rap, nl: sub.nl })
+      stored.set(sub.topic, record)
     }
     if (this.#broadcastSubscriptions) {
       await this.broadcast.addedSubscriptions(client, subs)
