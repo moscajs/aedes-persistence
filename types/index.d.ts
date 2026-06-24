@@ -53,7 +53,10 @@ export interface AedesPersistence {
     client: Client,
     cb: (
       error: CallbackError,
-      subs: { topic: Topic; qos: QoS }[],
+      // `subscriptionIdentifier` is the MQTT 5.0 Subscription Identifier, present
+      // only when the subscription carried one; aedes restores it from here on a
+      // non-clean reconnect.
+      subs: { topic: Topic; qos: QoS; subscriptionIdentifier?: number }[],
       client: Client,
     ) => void,
   ) => void;

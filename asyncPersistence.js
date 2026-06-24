@@ -122,7 +122,11 @@ class MemoryPersistence {
       const storedSub = stored.get(sub.topic)
       const record = { qos: sub.qos, rh: sub.rh, rap: sub.rap, nl: sub.nl }
       // MQTT 5.0 Subscription Identifier: only persisted when present so that
-      // pre-v5 subscriptions keep their exact stored shape.
+      // pre-v5 subscriptions keep their exact stored shape. It is kept on the
+      // per-client `record` (round-tripped by subscriptionsByClient, which is
+      // what aedes restores on a non-clean reconnect) but deliberately NOT added
+      // to the trie: QlobberSub only retains { qos, rh, rap, nl }, so the
+      // topic-match path (subscriptionsByTopic) never carries the identifier.
       if (sub.subscriptionIdentifier !== undefined) {
         record.subscriptionIdentifier = sub.subscriptionIdentifier
       }
@@ -130,7 +134,10 @@ class MemoryPersistence {
         trie.add(sub.topic, {
           clientId: client.id,
           topic: sub.topic,
-          ...record
+          qos: sub.qos,
+          rh: sub.rh,
+          rap: sub.rap,
+          nl: sub.nl
         })
       } else if (storedSub?.qos > 0) {
         trie.remove(sub.topic, {
