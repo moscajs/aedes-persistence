@@ -326,6 +326,29 @@ function abstractPersistence (opts) {
     await doCleanup(t, prInstance)
   })
 
+  // MQTT 5.0: an optional per-subscription Subscription Identifier must
+  // round-trip through the store so it can be echoed on matching PUBLISHes
+  // after a non-clean session is restored.
+  test('store and look up a subscription with an MQTT 5.0 subscription identifier', async (t) => {
+    t.plan(2)
+    const prInstance = await persistence(t)
+    const client = { id: 'subid-client' }
+    const subs = [{
+      topic: 'hello',
+      qos: 1,
+      rh: 0,
+      rap: true,
+      nl: false,
+      subscriptionIdentifier: 42
+    }]
+
+    await addSubscriptions(prInstance, client, subs)
+    const { resubs } = await subscriptionsByClient(prInstance, client)
+    t.assert.equal(resubs.length, 1, 'one subscription is restored')
+    t.assert.equal(resubs[0].subscriptionIdentifier, 42, 'subscription identifier round-trips')
+    await doCleanup(t, prInstance)
+  })
+
   test('remove subscriptions by client', async (t) => {
     t.plan(4)
     const prInstance = await persistence(t)
