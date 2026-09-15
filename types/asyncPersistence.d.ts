@@ -64,6 +64,8 @@ declare class MemoryPersistence {
 
   incomingDelPacket(client: Client, packet: AedesPacket): Promise<void>;
 
+  cleanIncoming(client: Client): Promise<void>;
+
   putWill(client: Client, packet: AedesPacket): Promise<void>;
 
   getWill(client: Client): Promise<WillPacket | undefined>;

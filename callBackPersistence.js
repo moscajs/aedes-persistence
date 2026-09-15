@@ -10,6 +10,13 @@ class CallBackPersistence extends EventEmitter {
 
     this.ready = false
     this.asyncPersistence = asyncInstanceFactory(opts)
+
+    // Don't advertise a capability the wrapped implementation lacks. aedes
+    // feature-detects cleanIncoming, and a bare delegation would pass that
+    // check and then throw synchronously on every clean-session CONNECT.
+    if (typeof this.asyncPersistence.cleanIncoming !== 'function') {
+      this.cleanIncoming = undefined
+    }
   }
 
   get broker () {
@@ -253,6 +260,20 @@ class CallBackPersistence extends EventEmitter {
         .catch(cb)
     } else {
       return this.asyncPersistence.incomingDelPacket(client, packet)
+    }
+  }
+
+  cleanIncoming (client, cb) {
+    if (cb) {
+      if (!this.ready) {
+        this.once('ready', this.cleanIncoming.bind(this, client, cb))
+        return
+      }
+      this.asyncPersistence.cleanIncoming(client)
+        .then(() => process.nextTick(cb, null, client))
+        .catch(cb)
+    } else {
+      return this.asyncPersistence.cleanIncoming(client)
     }
   }
 

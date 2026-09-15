@@ -123,6 +123,20 @@ export interface AedesPersistence {
     cb: (error: CallbackError) => void,
   ) => void;
 
+  /**
+   * Removes every stored incoming (QoS 2) packet for the given client.
+   * Called by aedes when a session is discarded (CONNECT with cleanSession),
+   * see [MQTT-3.1.2-6].
+   *
+   * Optional for backwards compatibility: aedes skips it when a persistence
+   * does not implement it, but then cross-session QoS 2 dedup residue survives
+   * a clean-session reconnect.
+   */
+  cleanIncoming: (
+    client: Client,
+    cb: (error: CallbackError, client: Client) => void,
+  ) => void;
+
   putWill: (
     client: Client,
     packet: AedesPacket,
@@ -258,6 +272,11 @@ export class AedesMemoryPersistence implements AedesPersistence {
     client: Client,
     packet: AedesPacket,
     cb: (error: CallbackError) => void,
+  ) => void;
+
+  cleanIncoming: (
+    client: Client,
+    cb: (error: CallbackError, client: Client) => void,
   ) => void;
 
   putWill: (

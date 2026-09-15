@@ -43,6 +43,7 @@ npm install aedes-persistence --save
   * <a href="#incomingStorePacket"><code>instance.<b>incomingStorePacket()</b></code></a>
   * <a href="#incomingGetPacket"><code>instance.<b>incomingGetPacket()</b></code></a>
   * <a href="#incomingDelPacket"><code>instance.<b>incomingDelPacket()</b></code></a>
+  * <a href="#cleanIncoming"><code>instance.<b>cleanIncoming()</b></code></a>
   * <a href="#putWill"><code>instance.<b>putWill()</b></code></a>
   * <a href="#getWill"><code>instance.<b>getWill()</b></code></a>
   * <a href="#delWill"><code>instance.<b>delWill()</b></code></a>
@@ -206,6 +207,32 @@ Retrieve an incoming packet with the same `messageId` for the given client. Used
 ### instance.incomingDelPacket(client, packet, cb(err, packet))
 
 Deletes incoming packet with the same `messageId` for the given client. Used for QoS 2.
+
+-------------------------------------------------------
+<a name="cleanIncoming"></a>
+### instance.cleanIncoming(client, callback(err, client))
+
+Removes all stored incoming (QoS 2) packets for the given client. Called by
+aedes when a session is discarded, i.e. on a CONNECT with `cleanSession` set,
+alongside [`cleanSubscriptions`](#cleanSubscriptions). Required by
+[MQTT-3.1.2-6]: without it the QoS 2 dedup table survives the session and the
+first colliding `messageId` published by the reconnected client is
+acknowledged but never delivered.
+
+Must not error when the client has no stored incoming packets.
+
+**Required since v11.0.0.** `abstract.js` tests it unconditionally, so an
+implementation that bumps its `aedes-persistence` dev dependency without adding
+this method fails its own conformance run.
+
+aedes feature-detects the method and skips it when absent, so an older
+persistence keeps working rather than crashing — but it stays affected by the
+bug described above until it implements this. That detection is a grace period
+for deployments mid-upgrade, not a licence to leave it unimplemented.
+
+For a store that keys incoming packets by `(clientId, messageId)` this is one
+delete-by-client statement — a `deleteMany` / `DELETE ... WHERE clientId = ?` /
+key-range clear — not a loop over `incomingDelPacket`.
 
 -------------------------------------------------------
 <a name="putWill"></a>
