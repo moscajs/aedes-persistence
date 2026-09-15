@@ -128,9 +128,10 @@ export interface AedesPersistence {
    * Called by aedes when a session is discarded (CONNECT with cleanSession),
    * see [MQTT-3.1.2-6].
    *
-   * Optional for backwards compatibility: aedes skips it when a persistence
-   * does not implement it, but then cross-session QoS 2 dedup residue survives
-   * a clean-session reconnect.
+   * Required of a persistence since v11.0.0, and declared non-optional here.
+   * aedes itself feature-detects the method and skips it when absent, so an
+   * older persistence keeps working rather than crashing — but it stays exposed
+   * to cross-session QoS 2 dedup residue surviving a clean-session reconnect.
    */
   cleanIncoming: (
     client: Client,
