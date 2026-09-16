@@ -215,6 +215,23 @@ class PromisifiedPersistence {
     })
   }
 
+  async cleanIncoming (client) {
+    /* c8 ignore next 3 */
+    if (typeof this.instance.cleanIncoming !== 'function') {
+      throw new Error('the wrapped persistence does not implement cleanIncoming')
+    }
+    return new Promise((resolve, reject) => {
+      this.instance.cleanIncoming(client, (err) => {
+        /* c8 ignore next 2 */
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  }
+
   async putWill (client, packet) {
     return new Promise((resolve, reject) => {
       this.instance.putWill(client, packet, (err, reClient) => {

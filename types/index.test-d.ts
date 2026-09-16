@@ -80,6 +80,13 @@ expectType<void>(
 );
 
 expectType<void>(
+  aedesMemoryPersistence().cleanIncoming(
+    {} as Client,
+    (error: CallbackError, client: Client) => {}
+  )
+);
+
+expectType<void>(
   aedesMemoryPersistence().outgoingEnqueue(
     { clientId: '' },
     {} as AedesPacket,

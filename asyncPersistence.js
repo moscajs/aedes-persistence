@@ -286,8 +286,6 @@ class MemoryPersistence {
     const id = client.id
     const store = getMapRef(this.#incoming, id, {})
 
-    this.#incoming.set(id, store)
-
     if (!store[packet.messageId]) {
       throw new Error('no such packet')
     }
@@ -303,6 +301,10 @@ class MemoryPersistence {
       throw new Error('no such packet')
     }
     delete store[packet.messageId]
+  }
+
+  async cleanIncoming (client) {
+    this.#incoming.delete(client.id)
   }
 
   async putWill (client, packet) {

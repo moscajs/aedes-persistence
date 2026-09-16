@@ -1299,6 +1299,63 @@ function abstractPersistence (opts) {
     }
   })
 
+  test('clean incoming packets', async (t) => {
+    t.plan(5)
+    const prInstance = await persistence(t)
+    const client = { id: 'abcde' }
+    const otherClient = { id: 'fghij' }
+    // extends `client`'s id: a prefix-scan delete (KEYS incoming:<id>*, a level
+    // gt/lt range, /^id/) wipes this one too unless the scan is terminated
+    const collidingClient = { id: 'abcdef' }
+    const packet = {
+      cmd: 'publish',
+      topic: 'hello',
+      payload: Buffer.from('world'),
+      qos: 2,
+      dup: false,
+      length: 14,
+      retain: false,
+      messageId: 42
+    }
+    const packet2 = Object.assign({}, packet, { messageId: 43 })
+
+    await prInstance.incomingStorePacket(client, packet)
+    await prInstance.incomingStorePacket(client, packet2)
+    await prInstance.incomingStorePacket(otherClient, packet)
+    await prInstance.incomingStorePacket(collidingClient, packet)
+    await prInstance.cleanIncoming(client)
+
+    for (const messageId of [packet.messageId, packet2.messageId]) {
+      try {
+        await prInstance.incomingGetPacket(client, { messageId })
+        t.assert.ok(false, 'must error')
+      } catch (err) {
+        t.assert.ok(err, 'must error')
+      }
+    }
+    const retrieved = await prInstance.incomingGetPacket(otherClient, {
+      messageId: packet.messageId
+    })
+    t.assert.equal(retrieved.messageId, packet.messageId, 'other clients must not be touched')
+    const colliding = await prInstance.incomingGetPacket(collidingClient, {
+      messageId: packet.messageId
+    })
+    t.assert.equal(colliding.messageId, packet.messageId, 'a client whose id extends the cleaned one must not be touched')
+    await prInstance.cleanIncoming(otherClient)
+    t.assert.ok(true, 'cleanIncoming must not error')
+    await doCleanup(t, prInstance)
+  })
+
+  test('clean incoming packets with no stored packets', async (t) => {
+    t.plan(1)
+    const prInstance = await persistence(t)
+    const client = { id: 'abcde' }
+
+    await prInstance.cleanIncoming(client)
+    t.assert.ok(true, 'cleanIncoming must not error')
+    await doCleanup(t, prInstance)
+  })
+
   test('store, fetch and delete will message', async (t) => {
     t.plan(7)
     const prInstance = await persistence(t)
