@@ -11,23 +11,22 @@ const QLOBBER_OPTIONS = {
 }
 const CREATE_ON_EMPTY = true
 
-// One pass over the retained store per call, however many patterns: exact
-// topics are direct lookups, wildcards share one matcher.
+// Exact topics are direct lookups; any wildcard means one shared scan of the
+// retained store per call.
 function * retainedMessagesByPatterns (retained, patterns) {
   const exact = new Set()
-  const qlobber = new QlobberTrue(QLOBBER_OPTIONS)
-  let hasWildcard = false
+  let qlobber = null
 
   for (const pattern of patterns) {
     if (pattern.includes(QLOBBER_OPTIONS.wildcard_one) || pattern.includes(QLOBBER_OPTIONS.wildcard_some)) {
+      qlobber ??= new QlobberTrue(QLOBBER_OPTIONS)
       qlobber.add(pattern)
-      hasWildcard = true
     } else {
       exact.add(pattern)
     }
   }
 
-  if (!hasWildcard) {
+  if (qlobber === null) {
     for (const topic of exact) {
       const packet = retained.get(topic)
       if (packet) {
