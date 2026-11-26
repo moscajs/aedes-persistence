@@ -172,6 +172,17 @@ function abstractPersistence (opts) {
     await doCleanup(t, prInstance)
   }
 
+  async function matchRetainedTopicSet (t, topics, patterns, expected) {
+    const prInstance = await persistence(t)
+    for (const topic of topics) {
+      await storeRetainedPacket(prInstance, { topic })
+    }
+    const list = await getArrayFromStream(prInstance.createRetainedStreamCombi(patterns))
+    // a backend may return a message once per matching pattern; compare topic sets
+    t.assert.deepEqual([...new Set(list.map(p => p.topic))].sort(), expected)
+    await doCleanup(t, prInstance)
+  }
+
   // testing starts here
   test('verify setup() method is async', async t => {
     t.plan(1)
@@ -223,6 +234,21 @@ function abstractPersistence (opts) {
   test('look up retained messages with multiple wildcard patterns', async t => {
     t.plan(1)
     await matchRetainedWithPattern(t, ['hello/+', 'hel/#', 'hello/world/there/+'])
+  })
+
+  test('look up retained messages with overlapping patterns', async t => {
+    t.plan(1)
+    await matchRetainedTopicSet(t, ['a/b', 'a/c', 'x/y'], ['a/b', 'a/+', '#'], ['a/b', 'a/c', 'x/y'])
+  })
+
+  test('look up retained messages with repeated exact patterns', async t => {
+    t.plan(1)
+    await matchRetainedTopicSet(t, ['a/b', 'a/b/c', 'a'], ['a/b', 'nope', 'a/b'], ['a/b'])
+  })
+
+  test('look up retained messages with exact and wildcard patterns', async t => {
+    t.plan(1)
+    await matchRetainedTopicSet(t, ['a/b', 'c/d', 'e/f/g'], ['c/d', 'e/+/g'], ['c/d', 'e/f/g'])
   })
 
   test('store multiple retained messages in order', async (t) => {

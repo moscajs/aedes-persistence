@@ -11,18 +11,32 @@ const QLOBBER_OPTIONS = {
 }
 const CREATE_ON_EMPTY = true
 
-function * multiIterables (iterables) {
-  for (const iter of iterables) {
-    yield * iter
-  }
-}
+// At most one scan of the retained store per call, however many patterns.
+function * retainedMessagesByPatterns (retained, patterns) {
+  const exact = new Set()
+  let qlobber = null
 
-function * retainedMessagesByPattern (retained, pattern) {
-  const qlobber = new QlobberTrue(QLOBBER_OPTIONS)
-  qlobber.add(pattern)
+  for (const pattern of patterns) {
+    if (pattern.includes(QLOBBER_OPTIONS.wildcard_one) || pattern.includes(QLOBBER_OPTIONS.wildcard_some)) {
+      qlobber ??= new QlobberTrue(QLOBBER_OPTIONS)
+      qlobber.add(pattern)
+    } else {
+      exact.add(pattern)
+    }
+  }
+
+  if (qlobber === null) {
+    for (const topic of exact) {
+      const packet = retained.get(topic)
+      if (packet) {
+        yield packet
+      }
+    }
+    return
+  }
 
   for (const [topic, packet] of retained) {
-    if (qlobber.test(topic)) {
+    if (exact.has(topic) || qlobber.test(topic)) {
       yield packet
     }
   }
@@ -98,14 +112,11 @@ class MemoryPersistence {
   }
 
   createRetainedStreamCombi (patterns) {
-    const iterables = patterns.map((p) => {
-      return retainedMessagesByPattern(this.#retained, p)
-    })
-    return Readable.from(multiIterables(iterables))
+    return Readable.from(retainedMessagesByPatterns(this.#retained, patterns))
   }
 
   createRetainedStream (pattern) {
-    return Readable.from(retainedMessagesByPattern(this.#retained, pattern))
+    return this.createRetainedStreamCombi([pattern])
   }
 
   async addSubscriptions (client, subs) {
