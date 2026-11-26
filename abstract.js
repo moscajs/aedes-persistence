@@ -172,7 +172,7 @@ function abstractPersistence (opts) {
     await doCleanup(t, prInstance)
   }
 
-  async function matchRetainedTopics (t, topics, patterns, expected) {
+  async function matchRetainedTopicSet (t, topics, patterns, expected) {
     const prInstance = await persistence(t)
     for (const topic of topics) {
       await storeRetainedPacket(prInstance, { topic })
@@ -238,17 +238,17 @@ function abstractPersistence (opts) {
 
   test('look up retained messages with overlapping patterns', async t => {
     t.plan(1)
-    await matchRetainedTopics(t, ['a/b', 'a/c', 'x/y'], ['a/b', 'a/+', '#'], ['a/b', 'a/c', 'x/y'])
+    await matchRetainedTopicSet(t, ['a/b', 'a/c', 'x/y'], ['a/b', 'a/+', '#'], ['a/b', 'a/c', 'x/y'])
   })
 
   test('look up retained messages with repeated exact patterns', async t => {
     t.plan(1)
-    await matchRetainedTopics(t, ['a/b', 'a/b/c', 'a'], ['a/b', 'nope', 'a/b'], ['a/b'])
+    await matchRetainedTopicSet(t, ['a/b', 'a/b/c', 'a'], ['a/b', 'nope', 'a/b'], ['a/b'])
   })
 
   test('look up retained messages with exact and wildcard patterns', async t => {
     t.plan(1)
-    await matchRetainedTopics(t, ['a/b', 'c/d', 'e/f/g'], ['c/d', 'e/+/g'], ['c/d', 'e/f/g'])
+    await matchRetainedTopicSet(t, ['a/b', 'c/d', 'e/f/g'], ['c/d', 'e/+/g'], ['c/d', 'e/f/g'])
   })
 
   test('store multiple retained messages in order', async (t) => {

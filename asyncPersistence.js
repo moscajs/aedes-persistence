@@ -11,8 +11,7 @@ const QLOBBER_OPTIONS = {
 }
 const CREATE_ON_EMPTY = true
 
-// Exact topics are direct lookups; any wildcard means one shared scan of the
-// retained store per call.
+// At most one scan of the retained store per call, however many patterns.
 function * retainedMessagesByPatterns (retained, patterns) {
   const exact = new Set()
   let qlobber = null

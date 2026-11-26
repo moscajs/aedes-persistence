@@ -2,8 +2,8 @@ const { test } = require('node:test')
 const memory = require('../persistence.js')
 const { getArrayFromStream } = require('../promisified.js')
 
-// The shared suite accepts one copy per matching pattern; the in-memory
-// backend returns each retained message once per call.
+// abstract.js compares topic sets and cannot see duplicates; check them here.
+
 async function withRetained (topics) {
   const instance = memory()
   await instance.setup({ id: 'broker' })
