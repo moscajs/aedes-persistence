@@ -11,18 +11,34 @@ const QLOBBER_OPTIONS = {
 }
 const CREATE_ON_EMPTY = true
 
-function * multiIterables (iterables) {
-  for (const iter of iterables) {
-    yield * iter
-  }
-}
-
-function * retainedMessagesByPattern (retained, pattern) {
+// One pass over the retained store per call, however many patterns: exact
+// topics are direct lookups, wildcards share one matcher.
+function * retainedMessagesByPatterns (retained, patterns) {
+  const exact = new Set()
   const qlobber = new QlobberTrue(QLOBBER_OPTIONS)
-  qlobber.add(pattern)
+  let wildcards = 0
+
+  for (const pattern of patterns) {
+    if (pattern.includes('+') || pattern.includes('#')) {
+      qlobber.add(pattern)
+      wildcards++
+    } else {
+      exact.add(pattern)
+    }
+  }
+
+  if (wildcards === 0) {
+    for (const topic of exact) {
+      const packet = retained.get(topic)
+      if (packet) {
+        yield packet
+      }
+    }
+    return
+  }
 
   for (const [topic, packet] of retained) {
-    if (qlobber.test(topic)) {
+    if (exact.has(topic) || qlobber.test(topic)) {
       yield packet
     }
   }
@@ -98,14 +114,11 @@ class MemoryPersistence {
   }
 
   createRetainedStreamCombi (patterns) {
-    const iterables = patterns.map((p) => {
-      return retainedMessagesByPattern(this.#retained, p)
-    })
-    return Readable.from(multiIterables(iterables))
+    return Readable.from(retainedMessagesByPatterns(this.#retained, patterns))
   }
 
   createRetainedStream (pattern) {
-    return Readable.from(retainedMessagesByPattern(this.#retained, pattern))
+    return this.createRetainedStreamCombi([pattern])
   }
 
   async addSubscriptions (client, subs) {
