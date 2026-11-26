@@ -76,7 +76,8 @@ pattern (according to the MQTT spec) asynchronously. Deprecated.
 ### instance.createRetainedStreamCombi(patterns)
 
 Return a stream that will load all retained messages matching given
-patterns (according to the MQTT spec) asynchronously.
+patterns (according to the MQTT spec) asynchronously. Each matching retained
+message is returned once per call, even when several patterns match it.
 
 -------------------------------------------------------
 <a name="addSubscriptions"></a>
