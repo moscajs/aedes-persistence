@@ -7,7 +7,8 @@ const BroadcastPersistence = require('./broadcastPersistence.js')
 const QLOBBER_OPTIONS = {
   wildcard_one: '+',
   wildcard_some: '#',
-  separator: '/'
+  separator: '/',
+  match_empty_levels: true
 }
 const CREATE_ON_EMPTY = true
 
