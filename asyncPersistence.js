@@ -16,18 +16,18 @@ const CREATE_ON_EMPTY = true
 function * retainedMessagesByPatterns (retained, patterns) {
   const exact = new Set()
   const qlobber = new QlobberTrue(QLOBBER_OPTIONS)
-  let wildcards = 0
+  let hasWildcard = false
 
   for (const pattern of patterns) {
-    if (pattern.includes('+') || pattern.includes('#')) {
+    if (pattern.includes(QLOBBER_OPTIONS.wildcard_one) || pattern.includes(QLOBBER_OPTIONS.wildcard_some)) {
       qlobber.add(pattern)
-      wildcards++
+      hasWildcard = true
     } else {
       exact.add(pattern)
     }
   }
 
-  if (wildcards === 0) {
+  if (!hasWildcard) {
     for (const topic of exact) {
       const packet = retained.get(topic)
       if (packet) {
